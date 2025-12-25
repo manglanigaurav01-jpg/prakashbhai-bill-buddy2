@@ -8,7 +8,7 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { initTheme } from "@/lib/theme-manager";
 import { setupGlobalErrorHandler, initErrorLogging } from "@/lib/error-logger";
 
-// Lazy load components for code splitting
+// Lazy load components for code splitting - Updated for CI/CD trigger
 const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
 const EnhancedCreateBill = lazy(() => import("@/components/EnhancedCreateBill").then(m => ({ default: m.EnhancedCreateBill })));
 const Customers = lazy(() => import("@/components/Customers").then(m => ({ default: m.Customers })));
