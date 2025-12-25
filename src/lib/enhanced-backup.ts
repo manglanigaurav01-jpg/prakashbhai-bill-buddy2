@@ -221,7 +221,7 @@ export const createEnhancedBackup = async () => {
         // Also save to DATA directory for internal listing/restore
         await Filesystem.writeFile({
           path: fileName,
-          data: backupJson,
+          data: base64Data,
           directory: DATA_DIR
         });
 
