@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -25,7 +25,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [newCustomerName, setNewCustomerName] = useState("");
-  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+
   const [date, setDate] = useState<Date>(new Date());
   const [particulars, setParticulars] = useState("");
   const [items, setItems] = useState<BillItem[]>([]);
@@ -51,7 +51,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     customers: Customer[];
     selectedCustomer: Customer | null;
     onCustomerSelect: (customer: Customer | null) => void;
-    onAddNew: () => void;
+    onAddNew: (name: string) => void;
   }) => {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -115,7 +115,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
                 <CommandGroup heading="Actions">
                   <CommandItem
                     onSelect={() => {
-                      onAddNew();
+                      onAddNew(searchQuery);
                       setOpen(false);
                       setSearchQuery('');
                     }}
@@ -224,7 +224,6 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       setCustomers([...customers, customer]);
       setSelectedCustomer(customer);
       setNewCustomerName("");
-      setShowNewCustomerDialog(false);
       toast({
         title: "Customer Created",
         description: `${customer.name} has been added successfully`,
@@ -394,8 +393,8 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
 
       // Save bill to storage
       const bill = saveBill({
-        customerId: selectedCustomer,
-        customerName: customer.name,
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.name,
         date: date.toISOString().split('T')[0],
         particulars,
         items: itemsToSave,
@@ -442,7 +441,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     setItemName("");
     setQuantity(undefined);
     setRate(undefined);
-    setShowNewCustomerDialog(false);
+
     setNewCustomerName("");
     setEditingItem(null);
     setEditingValues({});
@@ -477,7 +476,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
                   customers={customers}
                   selectedCustomer={selectedCustomer}
                   onCustomerSelect={setSelectedCustomer}
-                  onAddNew={() => setShowNewCustomerDialog(true)}
+                  onAddNew={(name) => { setNewCustomerName(name); handleCreateCustomer(); }}
                 />
               </div>
               <div className="space-y-2">

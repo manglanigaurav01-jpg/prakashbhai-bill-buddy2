@@ -25,6 +25,8 @@ export const BalanceHistory = ({ onNavigate }: BalanceHistoryProps) => {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
