@@ -242,18 +242,12 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Select Customer</Label>
-                  <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer to view balance" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map(customer => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CustomerSearchPopover
+                    customers={customers}
+                    selectedCustomer={selectedCustomer}
+                    onCustomerSelect={setSelectedCustomer}
+                    onAddNew={() => setShowNewCustomerDialog(true)}
+                  />
                 </div>
               </div>
             </CardContent>
