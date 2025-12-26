@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createBackup, restoreBackup, getBackupInfo, BackupData } from '@/lib/backup';
+import { createBackup, restoreBackup, BackupData } from '@/lib/backup';
 import { useToast } from '@/components/ui/use-toast';
 import { Download, Upload, RefreshCw, FileText } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
