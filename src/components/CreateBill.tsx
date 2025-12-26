@@ -3,17 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { ArrowLeft, Plus, Trash2, FileDown, Save, Edit3 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, Save, Edit3, Search } from "lucide-react";
 import { getCustomers, saveBill, saveCustomer } from "@/lib/storage";
 import { generateBillPDF } from "@/lib/pdf";
 import { Customer, BillItem } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { validateCustomerName, validateItemName, validateItemRate, validateItemQuantity, validateBillDate, validateForm, validateRequired } from "@/lib/validation";
+import { validateCustomerName, validateItemName, validateItemRate, validateItemQuantity, validateBillDate, validateForm } from "@/lib/validation";
 
 interface CreateBillProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -21,9 +23,9 @@ interface CreateBillProps {
 
 export const CreateBill = ({ onNavigate }: CreateBillProps) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [newCustomerName, setNewCustomerName] = useState("");
-  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const [particulars, setParticulars] = useState("");
   const [items, setItems] = useState<BillItem[]>([]);
@@ -32,13 +34,107 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
   const [rate, setRate] = useState<number | undefined>(undefined);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<Partial<BillItem>>({});
-  
+
   // Loading and progress states
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const { toast } = useToast();
+
+  const CustomerSearchPopover = ({
+    customers,
+    selectedCustomer,
+    onCustomerSelect,
+    onAddNew
+  }: {
+    customers: Customer[];
+    selectedCustomer: Customer | null;
+    onCustomerSelect: (customer: Customer | null) => void;
+    onAddNew: () => void;
+  }) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredCustomers = searchQuery
+      ? customers.filter(customer =>
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : customers;
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              value={selectedCustomer?.name || searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                if (value && !open) setOpen(true);
+                // Clear selection if user is typing
+                if (selectedCustomer && value !== selectedCustomer.name) {
+                  onCustomerSelect(null);
+                }
+              }}
+              placeholder="Search or type customer name..."
+              className="pr-10"
+              required
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Search customers..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+            <CommandList>
+              {filteredCustomers.length > 0 && (
+                <CommandGroup heading="Customers">
+                  {filteredCustomers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      onSelect={() => {
+                        onCustomerSelect(customer);
+                        setOpen(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <span>{customer.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchQuery && !filteredCustomers.some(customer => customer.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                <CommandGroup heading="Actions">
+                  <CommandItem
+                    onSelect={() => {
+                      onAddNew();
+                      setOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add "{searchQuery}" as new customer
+                  </CommandItem>
+                </CommandGroup>
+              )}
+
+              {filteredCustomers.length === 0 && !searchQuery && (
+                <CommandEmpty>Start typing to search customers...</CommandEmpty>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   useEffect(() => {
     setCustomers(getCustomers());
@@ -126,9 +222,9 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     try {
       const customer = saveCustomer({ name: newCustomerName.trim() });
       setCustomers([...customers, customer]);
-      setSelectedCustomer(customer.id);
+      setSelectedCustomer(customer);
       setNewCustomerName("");
-      setShowNewCustomer(false);
+      setShowNewCustomerDialog(false);
       toast({
         title: "Customer Created",
         description: `${customer.name} has been added successfully`,
@@ -153,7 +249,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
   const handleSave = async () => {
     // Validate form data
     const validations = [
-      validateRequired(selectedCustomer, 'Customer'),
+      selectedCustomer ? { isValid: true } : { isValid: false, error: 'Customer is required' },
       validateBillDate(date)
     ];
 
@@ -198,8 +294,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomer);
-    if (!customer) return;
+    if (!selectedCustomer) return;
 
     setIsSaving(true);
 
@@ -220,8 +315,8 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
 
       // Save bill to storage
       saveBill({
-        customerId: selectedCustomer,
-        customerName: customer.name,
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.name,
         date: date.toISOString().split('T')[0],
         particulars,
         items: itemsToSave,
@@ -270,8 +365,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomer);
-    if (!customer) return;
+    if (!selectedCustomer) return;
 
     setIsGeneratingPDF(true);
     setPdfProgress(0);
@@ -341,18 +435,18 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
   };
 
   const handleClear = () => {
-    setSelectedCustomer("");
+    setSelectedCustomer(null);
     setDate(new Date());
     setParticulars("");
     setItems([]);
     setItemName("");
     setQuantity(undefined);
     setRate(undefined);
-    setShowNewCustomer(false);
+    setShowNewCustomerDialog(false);
     setNewCustomerName("");
     setEditingItem(null);
     setEditingValues({});
-    
+
     toast({
       title: "Form Cleared",
       description: "All fields have been reset",
@@ -379,48 +473,12 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customer">Customer</Label>
-                {!showNewCustomer ? (
-                  <div className="flex gap-2">
-                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                      <SelectTrigger className="min-h-[44px] touch-manipulation">
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map(customer => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowNewCustomer(true)}
-                      className="min-h-[44px] touch-manipulation"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="New customer name"
-                      value={newCustomerName}
-                      onChange={(e) => setNewCustomerName(e.target.value)}
-                      className="min-h-[44px] touch-manipulation"
-                    />
-                    <Button onClick={handleCreateCustomer} className="min-h-[44px] touch-manipulation">
-                      Add
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowNewCustomer(false)}
-                      className="min-h-[44px] touch-manipulation"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <CustomerSearchPopover
+                  customers={customers}
+                  selectedCustomer={selectedCustomer}
+                  onCustomerSelect={setSelectedCustomer}
+                  onAddNew={() => setShowNewCustomerDialog(true)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Download } from "lucide-react";
-import { getCustomers } from "@/lib/storage";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Download, Search, Plus } from "lucide-react";
+import { getCustomers, saveCustomer } from "@/lib/storage";
 import { generateLastBalancePDF } from "@/lib/last-balance-pdf";
 import { Customer, MonthlyBalance } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +31,8 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | undefined>();
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
   const { toast } = useToast();
 
   // Load customers once
@@ -78,6 +83,102 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
     loadBalances();
   }, [selectedCustomer, customers, toast]);
 
+  const CustomerSearchPopover = ({
+    customers,
+    selectedCustomer,
+    onCustomerSelect,
+    onAddNew
+  }: {
+    customers: Customer[];
+    selectedCustomer: string;
+    onCustomerSelect: (customerId: string) => void;
+    onAddNew: () => void;
+  }) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredCustomers = searchQuery
+      ? customers.filter(customer =>
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : customers;
+
+    const selectedCustomerObj = customers.find(c => c.id === selectedCustomer);
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              value={selectedCustomerObj?.name || searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                if (value && !open) setOpen(true);
+                // Clear selection if user is typing
+                if (selectedCustomerObj && value !== selectedCustomerObj.name) {
+                  onCustomerSelect('');
+                }
+              }}
+              placeholder="Search or type customer name..."
+              className="pr-10"
+              required
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Search customers..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+            <CommandList>
+              {filteredCustomers.length > 0 && (
+                <CommandGroup heading="Customers">
+                  {filteredCustomers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      onSelect={() => {
+                        onCustomerSelect(customer.id);
+                        setOpen(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <span>{customer.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchQuery && !filteredCustomers.some(customer => customer.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                <CommandGroup heading="Actions">
+                  <CommandItem
+                    onSelect={() => {
+                      onAddNew();
+                      setOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add "{searchQuery}" as new customer
+                  </CommandItem>
+                </CommandGroup>
+              )}
+
+              {filteredCustomers.length === 0 && !searchQuery && (
+                <CommandEmpty>Start typing to search customers...</CommandEmpty>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   const handleGenerateLastBalancePDF = async () => {
     if (!selectedCustomer || !customerSummary) {
       toast({
@@ -95,17 +196,17 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
       });
 
       const result = await generateLastBalancePDF(selectedCustomer, customerSummary.customerName);
-      
+
       if (result.success) {
-        toast({ 
-          title: "Success", 
-          description: result.message || "PDF generated successfully" 
+        toast({
+          title: "Success",
+          description: result.message || "PDF generated successfully"
         });
       } else {
-        toast({ 
-          title: "Error", 
-          description: result.message || "Failed to generate PDF", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: result.message || "Failed to generate PDF",
+          variant: "destructive"
         });
       }
     } catch (error: any) {
@@ -191,6 +292,71 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
               </CardContent>
             </Card>
           )}
+
+          {/* Add New Customer Dialog */}
+          <Dialog open={showNewCustomerDialog} onOpenChange={setShowNewCustomerDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogDescription>Enter the customer name to add them to your list</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="newCustomerName">Customer Name</Label>
+                  <Input
+                    id="newCustomerName"
+                    value={newCustomerName}
+                    onChange={(e) => setNewCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowNewCustomerDialog(false);
+                    setNewCustomerName('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (newCustomerName.trim()) {
+                      try {
+                        const savedCustomer = saveCustomer({ name: newCustomerName.trim() });
+                        setSelectedCustomer(savedCustomer.id);
+                        setCustomers(getCustomers());
+                        setNewCustomerName('');
+                        setShowNewCustomerDialog(false);
+                        toast({
+                          title: "Success",
+                          description: "Customer added successfully"
+                        });
+                      } catch (error: any) {
+                        if (error && error.message === 'DUPLICATE_CUSTOMER_NAME') {
+                          toast({
+                            title: "A customer with this name already exists",
+                            description: "Please use a different name",
+                            variant: "destructive"
+                          });
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: "Failed to add customer",
+                            variant: "destructive"
+                          });
+                        }
+                      }
+                    }
+                  }}
+                >
+                  Add Customer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
