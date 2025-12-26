@@ -11,7 +11,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ArrowLeft, Plus, Trash2, FileDown, Save, Edit3, Search } from "lucide-react";
-import { getCustomers, saveBill, saveCustomer } from "@/lib/storage";
+import { getCustomers, saveBill, saveCustomer, getItems, saveItem } from "@/lib/storage";
 import { generateBillPDF } from "@/lib/pdf";
 import { Customer, BillItem } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -148,6 +148,27 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Check if item exists in item master, if not, add it
+    const existingItems = getItems();
+    const normalizedItemName = itemName.trim().toLowerCase();
+    const itemExists = existingItems.some(item => item.name.trim().toLowerCase() === normalizedItemName);
+
+    if (!itemExists) {
+      try {
+        saveItem({
+          name: itemName.trim(),
+          type: 'fixed',
+          rate: rate,
+          description: "",
+        });
+      } catch (error: any) {
+        // If duplicate item name error, continue (item already exists)
+        if (error.message !== 'DUPLICATE_ITEM_NAME') {
+          console.error('Error saving item to master:', error);
+        }
+      }
     }
 
     const newItem: BillItem = {

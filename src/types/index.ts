@@ -66,6 +66,7 @@ export interface ItemMaster {
   name: string;
   type: 'fixed' | 'variable';
   rate?: number; // Only for fixed-price items
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
