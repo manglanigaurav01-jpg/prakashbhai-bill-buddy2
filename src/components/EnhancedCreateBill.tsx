@@ -47,6 +47,100 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
   // @ts-expect-error - Intentionally unused, kept for future use
   const _itemInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
+  const CustomerSearchPopover = ({
+    customers,
+    selectedCustomer,
+    onCustomerSelect,
+    onAddNew
+  }: {
+    customers: Customer[];
+    selectedCustomer: Customer | null;
+    onCustomerSelect: (customer: Customer | null) => void;
+    onAddNew: () => void;
+  }) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredCustomers = searchQuery
+      ? customers.filter(customer =>
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : customers;
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              value={selectedCustomer?.name || searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                if (value && !open) setOpen(true);
+                // Clear selection if user is typing
+                if (selectedCustomer && value !== selectedCustomer.name) {
+                  onCustomerSelect(null);
+                }
+              }}
+              placeholder="Search or type customer name..."
+              className="pr-10"
+              required
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Search customers..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+            <CommandList>
+              {filteredCustomers.length > 0 && (
+                <CommandGroup heading="Customers">
+                  {filteredCustomers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      onSelect={() => {
+                        onCustomerSelect(customer);
+                        setOpen(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <span>{customer.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchQuery && !filteredCustomers.some(customer => customer.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                <CommandGroup heading="Actions">
+                  <CommandItem
+                    onSelect={() => {
+                      onAddNew();
+                      setOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add "{searchQuery}" as new customer
+                  </CommandItem>
+                </CommandGroup>
+              )}
+
+              {filteredCustomers.length === 0 && !searchQuery && (
+                <CommandEmpty>Start typing to search customers...</CommandEmpty>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   useEffect(() => {
     loadCustomers();
     loadItems();
@@ -387,10 +481,11 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
     }
   };
 
+
   const ItemSearchPopover = ({ index, item }: { index: number, item: BillItem }) => {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     const searchResults = searchQuery ? searchAvailableItems(searchQuery) : [];
     const isExistingItem = availableItems.find(availItem => availItem.name === item.itemName);
 
@@ -422,8 +517,8 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0" align="start">
           <Command>
-            <CommandInput 
-              placeholder="Search items..." 
+            <CommandInput
+              placeholder="Search items..."
               value={searchQuery}
               onValueChange={setSearchQuery}
             />
@@ -454,7 +549,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
                   ))}
                 </CommandGroup>
               )}
-              
+
               {mostUsedItems.length > 0 && !searchQuery && (
                 <CommandGroup heading="Most Used Items">
                   {mostUsedItems.map((mostUsedItem) => {
@@ -490,7 +585,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
                   })}
                 </CommandGroup>
               )}
-              
+
               {searchQuery && !searchResults.some(item => item.name.toLowerCase() === searchQuery.toLowerCase()) && (
                 <CommandGroup heading="Actions">
                   <CommandItem
@@ -507,7 +602,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
                   </CommandItem>
                 </CommandGroup>
               )}
-              
+
               {searchResults.length === 0 && !searchQuery && (
                 <CommandEmpty>Start typing to search items...</CommandEmpty>
               )}
@@ -546,29 +641,12 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
             {/* Customer Selection */}
             <div className="space-y-2">
               <Label htmlFor="customer">Customer</Label>
-              <Select 
-                value={selectedCustomer?.id || ''} 
-                onValueChange={(customerId) => {
-                  if (customerId === 'new') {
-                    setShowNewCustomerDialog(true);
-                  } else {
-                    const customer = customers.find(c => c.id === customerId);
-                    setSelectedCustomer(customer || null);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="new">+ Add New Customer</SelectItem>
-                </SelectContent>
-              </Select>
+              <CustomerSearchPopover
+                customers={customers}
+                selectedCustomer={selectedCustomer}
+                onCustomerSelect={(customer) => setSelectedCustomer(customer)}
+                onAddNew={() => setShowNewCustomerDialog(true)}
+              />
             </div>
 
             {/* Bill Date */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, SortAsc, SortDesc, Edit3, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Search, SortAsc, SortDesc, Edit3, Trash2, Save, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,8 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { toast } from '@/hooks/use-toast';
-import { getPayments, getCustomers, updatePayment, deletePayment } from '@/lib/storage';
+import { getPayments, getCustomers, updatePayment, deletePayment, saveCustomer } from '@/lib/storage';
 import { Customer, Payment } from '@/types';
 import { SwipeableItem } from '@/components/SwipeableItem';
 import { hapticMedium, hapticError, hapticSuccess } from '@/lib/haptics';
@@ -35,6 +38,8 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingAmount, setEditingAmount] = useState<string>('');
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -174,6 +179,100 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
     } finally {
       setShowDeleteId(null);
     }
+  };
+
+  const CustomerSearchPopover = ({
+    customers,
+    selectedCustomer,
+    onCustomerSelect,
+    onAddNew
+  }: {
+    customers: Customer[];
+    selectedCustomer: Customer | null;
+    onCustomerSelect: (customer: Customer | null) => void;
+    onAddNew: () => void;
+  }) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredCustomers = searchQuery
+      ? customers.filter(customer =>
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : customers;
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              value={selectedCustomer?.name || searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                if (value && !open) setOpen(true);
+                // Clear selection if user is typing
+                if (selectedCustomer && value !== selectedCustomer.name) {
+                  onCustomerSelect(null);
+                }
+              }}
+              placeholder="Search or type customer name..."
+              className="pr-10"
+              required
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Search customers..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+            <CommandList>
+              {filteredCustomers.length > 0 && (
+                <CommandGroup heading="Customers">
+                  {filteredCustomers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      onSelect={() => {
+                        onCustomerSelect(customer);
+                        setOpen(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <span>{customer.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchQuery && !filteredCustomers.some(customer => customer.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                <CommandGroup heading="Actions">
+                  <CommandItem
+                    onSelect={() => {
+                      onAddNew();
+                      setOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add "{searchQuery}" as new customer
+                  </CommandItem>
+                </CommandGroup>
+              )}
+
+              {filteredCustomers.length === 0 && !searchQuery && (
+                <CommandEmpty>Start typing to search customers...</CommandEmpty>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -333,16 +432,12 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
                   </div>
                   <div className="space-y-1 md:col-span-2">
                     <Label>Customer</Label>
-                    <Select value={editingCustomer?.id || ''} onValueChange={(id) => setEditingCustomer(customers.find(c => c.id === id) || null)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CustomerSearchPopover
+                      customers={customers}
+                      selectedCustomer={editingCustomer}
+                      onCustomerSelect={(customer) => setEditingCustomer(customer)}
+                      onAddNew={() => setShowNewCustomerDialog(true)}
+                    />
                   </div>
                 </div>
                 <div>
@@ -367,6 +462,71 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowDeleteId(null)}>Cancel</Button>
               <Button variant="destructive" onClick={confirmDelete}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add New Customer Dialog */}
+        <Dialog open={showNewCustomerDialog} onOpenChange={setShowNewCustomerDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Customer</DialogTitle>
+              <DialogDescription>Enter the customer name to add them to your list</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="newCustomerName">Customer Name</Label>
+                <Input
+                  id="newCustomerName"
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNewCustomerDialog(false);
+                  setNewCustomerName('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (newCustomerName.trim()) {
+                    try {
+                      const savedCustomer = saveCustomer({ name: newCustomerName.trim() });
+                      setEditingCustomer(savedCustomer);
+                      setCustomers(getCustomers());
+                      setNewCustomerName('');
+                      setShowNewCustomerDialog(false);
+                      toast({
+                        title: "Success",
+                        description: "Customer added successfully"
+                      });
+                    } catch (error: any) {
+                      if (error && error.message === 'DUPLICATE_CUSTOMER_NAME') {
+                        toast({
+                          title: "A customer with this name already exists",
+                          description: "Please use a different name",
+                          variant: "destructive"
+                        });
+                      } else {
+                        toast({
+                          title: "Error",
+                          description: "Failed to add customer",
+                          variant: "destructive"
+                        });
+                      }
+                    }
+                  }
+                }}
+              >
+                Add Customer
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
