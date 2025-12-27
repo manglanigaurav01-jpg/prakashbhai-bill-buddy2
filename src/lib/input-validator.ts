@@ -499,11 +499,9 @@ export class InputValidator {
 
       // Nested validation
       if (rule.type === 'object' && rule.nestedSchema && typeof value === 'object') {
-        const nestedResult: { errors: ValidationError[]; warnings: string[] } = await this.validateFields(value, rule.nestedSchema, options, fieldPath, depth + 1);
-        const nestedErrors: ValidationError[] = nestedResult.errors;
-        const nestedWarnings: string[] = nestedResult.warnings;
-        errors.push(...nestedErrors);
-        warnings.push(...nestedWarnings);
+        const nestedResult = await this.validateFields(value, rule.nestedSchema, options, fieldPath, depth + 1);
+        errors.push(...(nestedResult.errors as ValidationError[]));
+        warnings.push(...(nestedResult.warnings as string[]));
       }
 
       // Array validation
@@ -511,11 +509,9 @@ export class InputValidator {
         for (let i = 0; i < value.length; i++) {
           const itemPath = `${fieldPath}[${i}]`;
           if (rule.nestedSchema) {
-            const nestedResult: { errors: ValidationError[], warnings: string[] } = await this.validateFields(value[i], rule.nestedSchema, options, itemPath, depth + 1);
-            const nestedErrors: ValidationError[] = nestedResult.errors;
-            const nestedWarnings: string[] = nestedResult.warnings;
-            errors.push(...nestedErrors);
-            warnings.push(...nestedWarnings);
+            const nestedResult = await this.validateFields(value[i], rule.nestedSchema, options, itemPath, depth + 1);
+            errors.push(...(nestedResult.errors as ValidationError[]));
+            warnings.push(...(nestedResult.warnings as string[]));
           }
         }
       }
