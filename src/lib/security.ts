@@ -319,3 +319,43 @@ export function validateAndSanitize(
     sanitizedValue
   };
 }
+
+/**
+ * Validate customer input data
+ * @param data - Customer data object to validate
+ * @returns Validation result
+ */
+export function validateCustomerInput(data: any): ValidationResult {
+  const errors: string[] = [];
+
+  // Validate name
+  if (!data.name || typeof data.name !== 'string' || data.name.trim().length < 2) {
+    errors.push('Name is required and must be at least 2 characters');
+  }
+
+  // Validate email
+  if (!data.email || typeof data.email !== 'string') {
+    errors.push('Email is required');
+  } else {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      errors.push('Invalid email format');
+    }
+  }
+
+  // Validate phone (optional)
+  if (data.phone && typeof data.phone !== 'string') {
+    errors.push('Phone must be a string');
+  }
+
+  // Validate address (optional)
+  if (data.address && typeof data.address !== 'string') {
+    errors.push('Address must be a string');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: data
+  };
+}
