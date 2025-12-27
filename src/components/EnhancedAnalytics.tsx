@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ import { useState, useEffect } from 'react';
 import { ArrowLeft, Download, TrendingUp, Users, Package, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -374,9 +374,9 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
                 <CardDescription>Daily revenue over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] overflow-y-auto">
+                <div className="space-y-2">
                   {analyticsData.revenues.map((data, index) => (
-                    <div key={index} className="flex justify-between items-center mb-2 hover:bg-muted p-2 rounded-lg">
+                    <div key={index} className="flex justify-between items-center hover:bg-muted p-2 rounded-lg">
                       <span>{new Date(data.date).toLocaleDateString()}</span>
                       <span className="font-medium">₹{data.amount.toLocaleString()}</span>
                     </div>
@@ -392,9 +392,9 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
                 <CardDescription>Best performing products</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] overflow-y-auto">
+                <div className="space-y-2">
                   {analyticsData.topItems.map((item, index) => (
-                    <div key={index} className="mb-2 p-2 hover:bg-muted rounded-lg">
+                    <div key={index} className="p-2 hover:bg-muted rounded-lg">
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-medium">{item.name}</div>
@@ -417,9 +417,9 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
                 <CardDescription>Customer purchasing behavior</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] overflow-y-auto">
+                <div className="space-y-2">
                   {analyticsData.customerPatterns.map((customer, index) => (
-                    <div key={index} className="mb-2 p-2 hover:bg-muted rounded-lg">
+                    <div key={index} className="p-2 hover:bg-muted rounded-lg">
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-medium">{customer.customer}</div>
@@ -442,9 +442,9 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
                 <CardDescription>Payments requiring attention</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] overflow-y-auto">
+                <div className="space-y-2">
                   {analyticsData.outstandingPayments.map((payment, index) => (
-                    <div key={index} className="mb-2 p-2 hover:bg-muted rounded-lg">
+                    <div key={index} className="p-2 hover:bg-muted rounded-lg">
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-medium">{payment.customer}</div>
