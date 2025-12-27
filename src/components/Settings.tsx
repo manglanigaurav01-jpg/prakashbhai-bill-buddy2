@@ -389,7 +389,8 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
               </CardContent>
             </Card>
 
-            {/* Google Account & Auto Backup */}
+            {/* Google Account & Auto Backup - Hidden for future use */}
+            {false && (
             <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm border-accent/20">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
@@ -436,8 +437,8 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                       <p className="text-sm text-muted-foreground mb-3">
                         Sign in with Google to enable automatic monthly backups. Your data will be safely backed up at the end of each month.
                       </p>
-                      <Button 
-                        onClick={handleGoogleSignIn} 
+                      <Button
+                        onClick={handleGoogleSignIn}
                         disabled={isSigningIn}
                         className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
                       >
@@ -462,12 +463,13 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 )}
               </CardContent>
             </Card>
+            )}
 
             {/* Enhanced Backup System */}
             <BackupManager />
 
-            {/* Auto Cloud Sync */}
-            <AutoSync />
+            {/* Auto Cloud Sync - Hidden for future use */}
+            {false && <AutoSync />}
           </div>
 
           {/* Right Column - Quick Actions */}
