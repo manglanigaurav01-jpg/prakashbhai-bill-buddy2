@@ -1,5 +1,6 @@
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, ItemUsage } from '@/types';
 import { format } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface BusinessAnalytics {
   version: string;
@@ -211,9 +212,22 @@ export const deleteBill = (billId: string): void => {
   const bills = getBills();
   const bill = bills.find(b => b.id === billId);
   if (bill) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { addToRecycleBin } = require('./recycle-bin');
-    addToRecycleBin('bill', bill, `Bill #${billId.slice(-6)} - ${bill.customerName} - ₹${bill.grandTotal}`);
+    try {
+      // Direct localStorage manipulation to avoid circular dependency
+      const recycleBin = JSON.parse(localStorage.getItem('recycle_bin') || '[]');
+      const recycledItem = {
+        id: uuidv4(),
+        type: 'bill',
+        data: bill,
+        deletedAt: new Date().toISOString(),
+        displayName: `Bill #${billId.slice(-6)} - ${bill.customerName} - ₹${bill.grandTotal}`,
+      };
+      recycleBin.push(recycledItem);
+      localStorage.setItem('recycle_bin', JSON.stringify(recycleBin));
+    } catch (error) {
+      console.error('Error adding bill to recycle bin:', error);
+      // Don't throw error - allow deletion to proceed even if recycle bin fails
+    }
   }
   const updatedBills = bills.filter(b => b.id !== billId);
   localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(updatedBills));
@@ -249,9 +263,22 @@ export const deletePayment = (paymentId: string): void => {
   const payments = getPayments();
   const payment = payments.find(p => p.id === paymentId);
   if (payment) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { addToRecycleBin } = require('./recycle-bin');
-    addToRecycleBin('payment', payment, `Payment - ${payment.customerName} - ₹${payment.amount}`);
+    try {
+      // Direct localStorage manipulation to avoid circular dependency
+      const recycleBin = JSON.parse(localStorage.getItem('recycle_bin') || '[]');
+      const recycledItem = {
+        id: uuidv4(),
+        type: 'payment',
+        data: payment,
+        deletedAt: new Date().toISOString(),
+        displayName: `Payment - ${payment.customerName} - ₹${payment.amount}`,
+      };
+      recycleBin.push(recycledItem);
+      localStorage.setItem('recycle_bin', JSON.stringify(recycleBin));
+    } catch (error) {
+      console.error('Error adding payment to recycle bin:', error);
+      // Don't throw error - allow deletion to proceed even if recycle bin fails
+    }
   }
   const updatedPayments = payments.filter(p => p.id !== paymentId);
   localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(updatedPayments));
