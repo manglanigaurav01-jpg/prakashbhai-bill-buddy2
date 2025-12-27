@@ -122,12 +122,12 @@ export const validateCustomerEnhanced = (
   if (duplicateCheck.isDuplicate) {
     return {
       isValid: false,
-      error: `A customer with a similar name already exists (${(duplicateCheck.similarity * 100).toFixed(0)}% similar)`,
+      errors: [`A customer with a similar name already exists (${(duplicateCheck.similarity * 100).toFixed(0)}% similar)`],
       duplicate: duplicateCheck
     };
   }
   
-  return { isValid: true };
+  return { isValid: true, errors: [] };
 };
 
 // Enhanced item validation
@@ -144,7 +144,7 @@ export const validateItemEnhanced = (
   if (duplicateCheck.isDuplicate) {
     return {
       isValid: false,
-      error: `An item with a similar name already exists (${(duplicateCheck.similarity * 100).toFixed(0)}% similar)`,
+      errors: [`An item with a similar name already exists (${(duplicateCheck.similarity * 100).toFixed(0)}% similar)`],
       duplicate: duplicateCheck
     };
   }
@@ -244,7 +244,7 @@ export const useRealTimeValidation = (
       const result = validator(value);
       setValidation({
         isValid: result.isValid,
-        errors: result.error ? [result.error] : [],
+        errors: result.errors || [],
         warnings: [],
         isValidating: false
       });
