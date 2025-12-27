@@ -1,24 +1,22 @@
-# TODO: Fix Delete Error in Edit Payments and Edit Bills
+# TypeScript Error Fixes
 
-## Issue Description
-- When deleting "amt paid" in edit payment, shows error "failed to delete"
-- Same error occurs in edit bill
+## Tasks to Complete
 
-## Root Cause
-- `crypto.randomUUID()` in `recycle-bin.ts` is not supported in all browsers
-- `deletePayment` and `deleteBill` call `addToRecycleBin`, which fails if UUID generation fails
+### 1. Add Missing Interfaces and Functions to validation.ts
+- [ ] Add DataValidationResult interface
+- [ ] Add validatePaymentDate function
+- [ ] Add validatePaymentDateWithFutureWarning function
+- [ ] Add validateLargeAmount function
+- [ ] Add validateBillDateWithFutureWarning function
+- [ ] Add checkDataConsistency function
 
-## Changes Made
-- [x] Import `uuid` package in `recycle-bin.ts`
-- [x] Replace `crypto.randomUUID()` with `uuidv4()` in `addToRecycleBin` function
+### 2. Fix ValidationResult Inconsistencies
+- [ ] Fix enhanced-validation.ts to use 'errors' instead of 'error'
+- [ ] Fix CustomerSelector.tsx to use 'errors' instead of 'error'
+- [ ] Fix enhanced-storage.ts to use 'errors' instead of 'error'
 
-## Testing
-- [ ] Test deleting payments in Edit Payments
-- [ ] Test deleting bills in Edit Bills
-- [ ] Verify items are properly moved to recycle bin
+### 3. Fix validateForm Function
+- [ ] Update validateForm in validation.ts to return correct type
 
-## Summary
-The "Failed to delete" error was caused by `crypto.randomUUID()` not being supported in all browsers. The `deletePayment` and `deleteBill` functions call `addToRecycleBin`, which was failing due to the unsupported UUID method. This has been fixed by using the installed `uuid` package instead.
-
-## Follow-up
-- [ ] If issue persists, check for other potential causes (e.g., localStorage quota, JSON serialization issues)
+### 4. Test and Verify
+- [ ] Run TypeScript check to ensure all errors are resolved

@@ -13,6 +13,11 @@ export interface ValidationResult {
   sanitizedValue?: any;
 }
 
+export interface DataValidationResult {
+  isConsistent: boolean;
+  errors: string[];
+}
+
 export interface Customer {
   id?: string;
   name: string;
