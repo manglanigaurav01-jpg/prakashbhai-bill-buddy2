@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,52 +23,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    calculateAnalytics();
-  }, [timeRange]);
-
-  const exportToExcel = () => {
-    if (!analyticsData) return;
-
-    const workbook = {
-      SheetNames: ['Revenue', 'Top Items', 'Customer Patterns', 'Outstanding', 'Seasonal'],
-      Sheets: {
-        'Revenue': utils.json_to_sheet(analyticsData.revenues),
-        'Top Items': utils.json_to_sheet(analyticsData.topItems),
-        'Customer Patterns': utils.json_to_sheet(analyticsData.customerPatterns),
-        'Outstanding': utils.json_to_sheet(analyticsData.outstandingPayments),
-        'Seasonal': utils.json_to_sheet(analyticsData.seasonalTrends)
-      }
-    };
-    // Use a web worker to generate the workbook to avoid blocking the UI
-    try {
-      const worker = new Worker(new URL('@/workers/export-worker.ts', import.meta.url));
-      worker.postMessage({ type: 'export-xlsx', workbook, fileName: `analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.xlsx` });
-      worker.onmessage = (ev) => {
-        const msg = ev.data as any;
-        if (msg.type === 'export-xlsx-result') {
-          const buffer = msg.buffer as ArrayBuffer;
-          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = msg.fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          worker.terminate();
-        } else if (msg.type === 'error') {
-          console.error('Worker error:', msg.message);
-          worker.terminate();
-        }
-      };
-    } catch (err) {
-      console.error('Worker creation failed, falling back to main thread', err);
-    }
-  };
-
-  const calculateAnalytics = async () => {
+  const calculateAnalytics = useCallback(async () => {
     setLoading(true);
     const bills = getBills();
     const payments = getPayments();
@@ -182,6 +137,52 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
 
     setAnalyticsData({ revenues, topItems, customerPatterns, outstandingPayments, seasonalTrends });
     setLoading(false);
+  }, [timeRange]);
+
+  useEffect(() => {
+    calculateAnalytics();
+  }, [timeRange, calculateAnalytics]);
+
+  const exportToExcel = () => {
+    if (!analyticsData) return;
+
+    const workbook = {
+      SheetNames: ['Revenue', 'Top Items', 'Customer Patterns', 'Outstanding', 'Seasonal'],
+      Sheets: {
+        'Revenue': utils.json_to_sheet(analyticsData.revenues),
+        'Top Items': utils.json_to_sheet(analyticsData.topItems),
+        'Customer Patterns': utils.json_to_sheet(analyticsData.customerPatterns),
+        'Outstanding': utils.json_to_sheet(analyticsData.outstandingPayments),
+        'Seasonal': utils.json_to_sheet(analyticsData.seasonalTrends)
+      }
+    };
+    // Use a web worker to generate the workbook to avoid blocking the UI
+    try {
+      const worker = new Worker(new URL('@/workers/export-worker.ts', import.meta.url));
+      worker.postMessage({ type: 'export-xlsx', workbook, fileName: `analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.xlsx` });
+      worker.onmessage = (ev) => {
+        const msg = ev.data as any;
+        if (msg.type === 'export-xlsx-result') {
+          const buffer = msg.buffer as ArrayBuffer;
+          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+
+          link.href = url;
+          link.download = msg.fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          worker.terminate();
+        } else if (msg.type === 'error') {
+          console.error('Worker error:', msg.message);
+          worker.terminate();
+        }
+      };
+    } catch (err) {
+      console.error('Worker creation failed, falling back to main thread', err);
+    }
   };
 
   if (loading) return (

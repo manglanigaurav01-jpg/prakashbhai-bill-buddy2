@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
@@ -14,25 +14,7 @@ export const AutoSync = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [user, setUser] = useState(getCurrentUser());
 
-  useEffect(() => {
-    if (user) {
-      handleSync();
-    }
-
-    // Check network status
-    const handleOnline = () => setSyncError(null);
-    const handleOffline = () => setSyncError('No internet connection');
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [user]);
-
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     if (!user || isLoading) return;
     if (!navigator.onLine) {
       setSyncError('No internet connection');
@@ -71,7 +53,25 @@ export const AutoSync = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, isLoading, toast]);
+
+  useEffect(() => {
+    if (user) {
+      handleSync();
+    }
+
+    // Check network status
+    const handleOnline = () => setSyncError(null);
+    const handleOffline = () => setSyncError('No internet connection');
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user, handleSync]);
 
   const handleSignIn = async () => {
     setIsLoading(true);

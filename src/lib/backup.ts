@@ -161,7 +161,7 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
 
     // Restore items and rate history (may be empty arrays for older backups)
-    let restoredItems = backupData.items || [];
+    const restoredItems = backupData.items || [];
 
     // Extract items from bills and add them to item master if they don't exist
     // This ensures that items referenced in bills are available in the item master
