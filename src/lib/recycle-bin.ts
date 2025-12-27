@@ -1,6 +1,13 @@
 import { Customer, Bill, Payment } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
+// Storage keys matching those in storage.ts
+const STORAGE_KEYS = {
+  CUSTOMERS: 'prakash_customers',
+  BILLS: 'prakash_bills',
+  PAYMENTS: 'prakash_payments',
+};
+
 export interface RecycledItem {
   id: string;
   type: 'customer' | 'bill' | 'payment';
@@ -56,21 +63,21 @@ export const restoreFromRecycleBin = (itemId: string): boolean => {
     // Restore to appropriate storage
     switch (item.type) {
       case 'customer': {
-        const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        const customers = JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOMERS) || '[]');
         customers.push(item.data);
-        localStorage.setItem('customers', JSON.stringify(customers));
+        localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
         break;
       }
       case 'bill': {
-        const bills = JSON.parse(localStorage.getItem('bills') || '[]');
+        const bills = JSON.parse(localStorage.getItem(STORAGE_KEYS.BILLS) || '[]');
         bills.push(item.data);
-        localStorage.setItem('bills', JSON.stringify(bills));
+        localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(bills));
         break;
       }
       case 'payment': {
-        const payments = JSON.parse(localStorage.getItem('payments') || '[]');
+        const payments = JSON.parse(localStorage.getItem(STORAGE_KEYS.PAYMENTS) || '[]');
         payments.push(item.data);
-        localStorage.setItem('payments', JSON.stringify(payments));
+        localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
         break;
       }
     }
