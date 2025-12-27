@@ -1,4 +1,5 @@
 import { Customer, Bill, Payment } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface RecycledItem {
   id: string;
@@ -29,7 +30,7 @@ export const addToRecycleBin = (
 ): void => {
   const recycleBin = getRecycleBin();
   const recycledItem: RecycledItem = {
-    id: crypto.randomUUID(),
+    id: uuidv4(),
     type,
     data,
     deletedAt: new Date().toISOString(),

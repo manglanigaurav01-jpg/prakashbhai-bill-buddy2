@@ -1,27 +1,24 @@
-# Folder Structure Implementation for Mobile Local Storage
+# TODO: Fix Delete Error in Edit Payments and Edit Bills
 
-## Completed Tasks
-- [x] Create `src/lib/filesystem-utils.ts` with folder management functions
-- [x] Update `src/lib/pdf.ts` to save bill PDFs in customer-specific folders
-- [x] Update `src/lib/pdf.ts` to save customer summary PDFs in customer-specific folders
-- [x] Fix TypeScript errors in filesystem utilities
+## Issue Description
+- When deleting "amt paid" in edit payment, shows error "failed to delete"
+- Same error occurs in edit bill
 
-## Pending Tasks
-- [ ] Test folder creation on mobile device
-- [ ] Verify PDF saving in correct customer folders
-- [ ] Handle filesystem permission errors gracefully
-- [ ] Update bill creation flow to ensure customer folders are created when needed (if not already handled)
-- [ ] Test fallback to CACHE directory when customer folder creation fails
+## Root Cause
+- `crypto.randomUUID()` in `recycle-bin.ts` is not supported in all browsers
+- `deletePayment` and `deleteBill` call `addToRecycleBin`, which fails if UUID generation fails
 
-## Implementation Details
-- Customer names are sanitized (special chars removed, spaces to underscores, max 50 chars)
-- PDFs are saved in DOCUMENTS directory under customer name folders
-- Fallback to CACHE directory if customer folder creation fails
-- Uses Capacitor Filesystem API for mobile operations
+## Changes Made
+- [x] Import `uuid` package in `recycle-bin.ts`
+- [x] Replace `crypto.randomUUID()` with `uuidv4()` in `addToRecycleBin` function
 
-## Testing Checklist
-- [ ] Create a bill and verify PDF saves in customer folder
-- [ ] Generate customer summary and verify PDF saves in customer folder
-- [ ] Test with special characters in customer names
-- [ ] Test fallback behavior when filesystem access fails
-- [ ] Verify sharing functionality works with saved PDFs
+## Testing
+- [ ] Test deleting payments in Edit Payments
+- [ ] Test deleting bills in Edit Bills
+- [ ] Verify items are properly moved to recycle bin
+
+## Summary
+The "Failed to delete" error was caused by `crypto.randomUUID()` not being supported in all browsers. The `deletePayment` and `deleteBill` functions call `addToRecycleBin`, which was failing due to the unsupported UUID method. This has been fixed by using the installed `uuid` package instead.
+
+## Follow-up
+- [ ] If issue persists, check for other potential causes (e.g., localStorage quota, JSON serialization issues)
