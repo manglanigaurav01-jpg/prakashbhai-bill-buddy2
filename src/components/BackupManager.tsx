@@ -75,12 +75,29 @@ export const BackupManager = () => {
   };
 
   const handleConfirmRestore = async () => {
-    if (!previewData) return;
+    if (!previewData) {
+      toast({
+        variant: "destructive",
+        title: "Restore Failed",
+        description: "No backup data available to restore"
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
+      // Validate backup data before proceeding
+      if (!previewData.customers || !previewData.bills || !previewData.payments || !previewData.lastBalances) {
+        throw new Error('Backup data is corrupted or incomplete');
+      }
+
       // Create a temporary file for restoreBackup function
-      const blob = new Blob([JSON.stringify(previewData)], { type: 'application/json' });
+      const jsonString = JSON.stringify(previewData);
+      if (jsonString === 'undefined') {
+        throw new Error('Failed to serialize backup data');
+      }
+
+      const blob = new Blob([jsonString], { type: 'application/json' });
       const file = new File([blob], 'backup.json', { type: 'application/json' });
 
       const result = await restoreBackup(file);
@@ -97,6 +114,7 @@ export const BackupManager = () => {
         throw new Error(result.message);
       }
     } catch (error) {
+      console.error('Restore error:', error);
       toast({
         variant: "destructive",
         title: "Restore Failed",

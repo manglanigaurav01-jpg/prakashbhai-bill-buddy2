@@ -12,11 +12,11 @@ export interface BackupData {
   bills: Bill[];
   payments: Payment[];
   lastBalances: CustomerBalance[];
-  items: ItemMaster[];
-  itemRateHistory: ItemRateHistory[];
-  businessAnalytics: BusinessAnalytics;
-  recycleBin: RecycledItem[];
-  dataVersion: string;
+  items?: ItemMaster[];
+  itemRateHistory?: ItemRateHistory[];
+  businessAnalytics?: BusinessAnalytics;
+  recycleBin?: RecycledItem[];
+  dataVersion?: string;
   syncStatus?: any;
   analysisCache?: any;
   lastSync?: string;
@@ -155,12 +155,45 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     // Clear existing data and restore from backup
     localStorage.clear();
 
-    // Restore data
+    // Restore core data (always present)
     localStorage.setItem('prakash_customers', JSON.stringify(backupData.customers));
     localStorage.setItem('prakash_bills', JSON.stringify(backupData.bills));
     localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
-    localStorage.setItem('prakash_items', JSON.stringify(backupData.items));
-    localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
+
+    // Restore items and rate history (may be empty arrays for older backups)
+    if (backupData.items) {
+      localStorage.setItem('prakash_items', JSON.stringify(backupData.items));
+    }
+    if (backupData.itemRateHistory) {
+      localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
+    }
+
+    // Restore business analytics (new in v3.0)
+    if (backupData.businessAnalytics) {
+      localStorage.setItem('prakash_business_analytics', JSON.stringify(backupData.businessAnalytics));
+    }
+
+    // Restore recycle bin data (new in v3.0)
+    if (backupData.recycleBin) {
+      localStorage.setItem('recycle_bin', JSON.stringify(backupData.recycleBin));
+    }
+
+    // Restore metadata (new in v3.0)
+    if (backupData.dataVersion) {
+      localStorage.setItem('prakash_data_version', backupData.dataVersion);
+    }
+    if (backupData.syncStatus) {
+      localStorage.setItem('prakash_sync_status', JSON.stringify(backupData.syncStatus));
+    }
+    if (backupData.analysisCache) {
+      localStorage.setItem('prakash_analysis_cache', JSON.stringify(backupData.analysisCache));
+    }
+    if (backupData.lastSync) {
+      localStorage.setItem('prakash_last_sync', backupData.lastSync);
+    }
+    if (backupData.syncConflicts) {
+      localStorage.setItem('prakash_sync_conflicts', JSON.stringify(backupData.syncConflicts));
+    }
 
     // Note: lastBalances is computed from bills and payments, so we don't store it directly
 
@@ -172,7 +205,7 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     console.error('Backup restoration failed:', error);
     return {
       success: false,
-      message: 'Failed to restore backup'
+      message: `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 };
@@ -204,7 +237,7 @@ export const getBackupInfo = (backupData: BackupData) => {
     customerCount: backupData.customers.length,
     billCount: backupData.bills.length,
     paymentCount: backupData.payments.length,
-    itemCount: backupData.items.length,
+    itemCount: backupData.items?.length || 0,
     totalRevenue: backupData.bills.reduce((sum, bill) => sum + bill.grandTotal, 0),
     totalPayments: backupData.payments.reduce((sum, payment) => sum + payment.amount, 0)
   };
