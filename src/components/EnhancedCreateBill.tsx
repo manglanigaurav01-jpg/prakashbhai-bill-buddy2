@@ -24,11 +24,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
   const [discount, setDiscount] = useState<string>('');
   const [discountType, setDiscountType] = useState<'percentage' | 'flat'>('percentage');
 
-  const handleItemNameChange = (index: number, value: string) => {
-    const updatedItems = [...billItems];
-    updatedItems[index].itemName = value;
-    setBillItems(updatedItems);
-  };
+
 
   const handleQuantityChange = (index: number, value: string) => {
     const quantity = parseFloat(value) || 0;
@@ -294,7 +290,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
               <CustomerSelector
                 selectedCustomer={selectedCustomer}
                 onCustomerSelect={setSelectedCustomer}
-                onAddNew={() => {}}
               />
             </div>
 
@@ -308,7 +303,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
               isLoading={isLoading}
               onBillDateChange={setBillDate}
               onParticularsChange={setParticulars}
-              onItemNameChange={handleItemNameChange}
               onQuantityChange={handleQuantityChange}
               onRateChange={handleRateChange}
               onItemSelect={handleItemSelect}

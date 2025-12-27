@@ -1,6 +1,7 @@
-# TODO: Fix TypeScript Errors
+# Fix TypeScript Errors in EnhancedCreateBill.tsx
 
-- [x] Remove unused 'CardContent' import from BillForm.tsx
-- [x] Remove 'onItemNameChange' from BillFormProps interface and component in BillForm.tsx
-- [x] Remove 'onAddNew' from CustomerSelectorProps interface and component in CustomerSelector.tsx
-- [x] Run npx tsc --noEmit --project tsconfig.app.json to verify fixes
+## Tasks
+- [x] Remove `onAddNew` prop from CustomerSelector usage
+- [x] Remove `onItemNameChange` prop from BillForm usage
+- [x] Remove unused `handleItemNameChange` function
+- [x] Run TypeScript check to verify fixes
