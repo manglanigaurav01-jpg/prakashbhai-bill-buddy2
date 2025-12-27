@@ -515,3 +515,147 @@ export function getValidationSummary(results: ValidationResult[]): {
     allErrors: [...new Set(allErrors)] // Remove duplicates
   };
 }
+
+/**
+ * Validate customer name
+ * @param name - Name string to validate
+ * @returns Validation result
+ */
+export function validateCustomerName(name: string): ValidationResult {
+  if (typeof name !== 'string') {
+    return { isValid: false, errors: ['Name must be a string'] };
+  }
+
+  const sanitized = sanitizeCustomerName(name);
+  if (!sanitized) {
+    return { isValid: false, errors: ['Name contains invalid characters'] };
+  }
+
+  if (sanitized.length < 2) {
+    return { isValid: false, errors: ['Name must be at least 2 characters long'] };
+  }
+
+  if (sanitized.length > 100) {
+    return { isValid: false, errors: ['Name must be less than 100 characters'] };
+  }
+
+  return { isValid: true, errors: [], sanitizedValue: sanitized };
+}
+
+/**
+ * Validate item name
+ * @param name - Item name string to validate
+ * @returns Validation result
+ */
+export function validateItemName(name: string): ValidationResult {
+  if (typeof name !== 'string') {
+    return { isValid: false, errors: ['Item name must be a string'] };
+  }
+
+  const sanitized = sanitizeBillParticulars(name);
+  if (!sanitized || sanitized.length === 0) {
+    return { isValid: false, errors: ['Item name is required'] };
+  }
+
+  return { isValid: true, errors: [], sanitizedValue: sanitized };
+}
+
+/**
+ * Validate item rate
+ * @param rate - Rate number to validate
+ * @returns Validation result
+ */
+export function validateItemRate(rate: any): ValidationResult {
+  if (typeof rate !== 'number' || isNaN(rate)) {
+    return { isValid: false, errors: ['Rate must be a valid number'] };
+  }
+
+  if (rate <= 0) {
+    return { isValid: false, errors: ['Rate must be greater than 0'] };
+  }
+
+  return { isValid: true, errors: [], sanitizedValue: sanitizeNumber(rate) };
+}
+
+/**
+ * Validate item quantity
+ * @param quantity - Quantity number to validate
+ * @returns Validation result
+ */
+export function validateItemQuantity(quantity: any): ValidationResult {
+  if (typeof quantity !== 'number' || isNaN(quantity)) {
+    return { isValid: false, errors: ['Quantity must be a valid number'] };
+  }
+
+  if (quantity <= 0) {
+    return { isValid: false, errors: ['Quantity must be greater than 0'] };
+  }
+
+  if (quantity % 1 !== 0) {
+    return { isValid: false, errors: ['Quantity must be a whole number'] };
+  }
+
+  return { isValid: true, errors: [], sanitizedValue: Math.floor(quantity) };
+}
+
+/**
+ * Validate payment amount
+ * @param amount - Amount number to validate
+ * @returns Validation result
+ */
+export function validatePaymentAmount(amount: any): ValidationResult {
+  return validateAmount(amount);
+}
+
+/**
+ * Validate bill date
+ * @param date - Date to validate
+ * @returns Validation result
+ */
+export function validateBillDate(date: any): ValidationResult {
+  return validateDate(date);
+}
+
+/**
+ * Validate email
+ * @param email - Email string to validate
+ * @param fieldName - Field name for error messages
+ * @returns Validation result
+ */
+export function validateEmail(email: string, fieldName: string): ValidationResult {
+  const result = validateEmailFormat(email);
+  if (!result.isValid) {
+    return result;
+  }
+  return { ...result, errors: result.errors.map(err => `${fieldName}: ${err}`) };
+}
+
+/**
+ * Validate phone
+ * @param phone - Phone string to validate
+ * @param fieldName - Field name for error messages
+ * @returns Validation result
+ */
+export function validatePhone(phone: string, fieldName: string): ValidationResult {
+  const result = validatePhoneNumberFormat(phone);
+  if (!result.isValid) {
+    return result;
+  }
+  return { ...result, errors: result.errors.map(err => `${fieldName}: ${err}`) };
+}
+
+/**
+ * Validate form with multiple validations
+ * @param validations - Array of validation results
+ * @returns Combined validation result
+ */
+export function validateForm(validations: ValidationResult[]): ValidationResult {
+  const allErrors = validations.flatMap(v => v.errors);
+  const allValid = validations.every(v => v.isValid);
+
+  return {
+    isValid: allValid,
+    errors: allErrors,
+    sanitizedValue: validations.map(v => v.sanitizedValue)
+  };
+}

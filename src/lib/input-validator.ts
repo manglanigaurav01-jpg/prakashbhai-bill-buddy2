@@ -603,11 +603,7 @@ export class InputValidator {
         }
 
       if (rule.type === 'array' && Array.isArray(value) && rule.nestedSchema) {
-        const sanitizedArray: any[] = [];
-        for (const item of value) {
-          sanitizedArray.push(this.sanitizeData(item, rule.nestedSchema!));
-        }
-        value = sanitizedArray;
+        value = value.map((item: any) => this.sanitizeData(item, rule.nestedSchema!));
       }
 
         sanitized[field] = value;
