@@ -389,87 +389,12 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
               </CardContent>
             </Card>
 
-            {/* Google Account & Auto Backup - Hidden for future use */}
-            {false && (
-            <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm border-accent/20">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/20 text-accent">
-                    <Cloud className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Cloud Backup</CardTitle>
-                    <CardDescription>Automatic monthly backups with Google</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {currentUser ? (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-primary/20 rounded-full">
-                          <UserIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">Signed in as</p>
-                          <p className="text-sm text-muted-foreground break-all">{currentUser.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-green-500 bg-green-500/10 px-3 py-2 rounded-lg">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span>Automatic backups enabled</span>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <RefreshCw className="w-3 h-3" />
-                        Backups will be created automatically at the end of each month
-                      </p>
-                    </div>
-                    <Button variant="outline" onClick={handleSignOut} className="w-full">
-                      Sign Out
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-muted/50 border border-dashed">
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Sign in with Google to enable automatic monthly backups. Your data will be safely backed up at the end of each month.
-                      </p>
-                      <Button
-                        onClick={handleGoogleSignIn}
-                        disabled={isSigningIn}
-                        className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
-                      >
-                        {isSigningIn ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Signing in...
-                          </>
-                        ) : (
-                          <>
-                            <UserIcon className="w-4 h-4 mr-2" />
-                            Sign in with Google
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2 px-2">
-                      <span className="w-1 h-1 bg-muted-foreground rounded-full" />
-                      You can use the app without signing in. Sign in later to enable auto-backup.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            )}
+
 
             {/* Enhanced Backup System */}
             <BackupManager />
 
-            {/* Auto Cloud Sync - Hidden for future use */}
-            {false && <AutoSync />}
+
           </div>
 
           {/* Right Column - Quick Actions */}
