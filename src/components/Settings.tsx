@@ -14,17 +14,18 @@ import { isPasswordSet, setPassword, verifyPassword, changePassword, removePassw
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initializeAutoBackup } from '@/lib/auto-backup';
+import { useTheme } from '@/lib/theme-manager';
 import type { User } from 'firebase/auth';
 import { Separator } from "@/components/ui/separator";
-
 interface SettingsProps {
   onNavigate: (view: string) => void;
 }
 
 export const Settings = ({ onNavigate }: SettingsProps) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { effectiveTheme, toggleTheme } = useTheme();
   const { toast } = useToast();
+  const isDarkMode = effectiveTheme === 'dark';
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordEnabled, setPasswordEnabled] = useState(isPasswordSet());
   const [passwordAction, setPasswordAction] = useState<'set' | 'change' | 'remove' | 'confirmClear'>('set');
@@ -35,15 +36,7 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  // Check for existing dark mode preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
-    
-    setIsDarkMode(shouldBeDark);
-    document.documentElement.classList.toggle('dark', shouldBeDark);
-  }, []);
+
 
   // Monitor auth state
   useEffect(() => {
@@ -123,14 +116,12 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
     }
   };
 
-  const toggleDarkMode = (enabled: boolean) => {
-    setIsDarkMode(enabled);
-    localStorage.setItem('theme', enabled ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', enabled);
-    
+  const toggleDarkMode = () => {
+    toggleTheme();
+
     toast({
-      title: `${enabled ? 'Dark' : 'Light'} mode enabled`,
-      description: `Switched to ${enabled ? 'dark' : 'light'} theme.`,
+      title: `${!isDarkMode ? 'Dark' : 'Light'} mode enabled`,
+      description: `Switched to ${!isDarkMode ? 'dark' : 'light'} theme.`,
     });
   };
 
