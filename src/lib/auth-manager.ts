@@ -16,6 +16,10 @@ import {
 } from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
+import { loginRateLimiter, signupRateLimiter, passwordResetRateLimiter } from './rate-limiter';
+import { EncryptedStorage } from './encrypted-storage';
+import { StorageMigration } from './storage-migration';
+import { sanitizeEmail, sanitizeCustomerName } from './security';
 
 // Initialize Firebase app if not already initialized
 const firebaseConfig = {
@@ -29,10 +33,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-import { authRateLimiter } from './rate-limiter';
-import { EncryptedStorage } from './encrypted-storage';
-import { StorageMigration } from './storage-migration';
-import { sanitizeEmail, sanitizeCustomerName } from './security';
 
 const auth = getAuth(app);
 
@@ -40,6 +40,7 @@ export interface AuthResult {
   success: boolean;
   user?: User;
   error?: string;
+  message?: string;
 }
 
 export interface RegisterResult extends AuthResult {
@@ -66,7 +67,7 @@ export const isAuthenticated = (): boolean => {
  */
 export const authenticate = async (email: string, password: string): Promise<AuthResult> => {
   // Check rate limit before attempting authentication
-  const rateLimit = authRateLimiter.checkLimit();
+  const rateLimit = loginRateLimiter.checkLimit();
 
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.resetTime - Date.now()) / (60 * 1000));
@@ -79,7 +80,7 @@ export const authenticate = async (email: string, password: string): Promise<Aut
   // Sanitize email input
   const sanitizedEmail = sanitizeEmail(email);
   if (!sanitizedEmail) {
-    authRateLimiter.recordRequest(); // Count invalid attempts
+    loginRateLimiter.recordRequest(); // Count invalid attempts
     return {
       success: false,
       error: 'Please enter a valid email address.'
@@ -90,7 +91,7 @@ export const authenticate = async (email: string, password: string): Promise<Aut
     const userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, password);
 
     // Record successful authentication
-    authRateLimiter.recordRequest();
+    loginRateLimiter.recordRequest();
 
     // Initialize encrypted storage for the user
     await EncryptedStorage.initialize(userCredential.user.uid);
@@ -108,7 +109,7 @@ export const authenticate = async (email: string, password: string): Promise<Aut
 
   } catch (error: any) {
     // Record failed attempt
-    authRateLimiter.recordRequest();
+    loginRateLimiter.recordRequest();
 
     // Handle specific Firebase auth errors
     const authError = error as AuthError;
@@ -152,7 +153,7 @@ export const register = async (
   displayName?: string
 ): Promise<RegisterResult> => {
   // Check rate limit before attempting registration
-  const rateLimit = authRateLimiter.checkLimit();
+  const rateLimit = signupRateLimiter.checkLimit();
 
   if (!rateLimit.allowed) {
     const minutes = Math.ceil((rateLimit.resetTime - Date.now()) / (60 * 1000));
@@ -165,7 +166,7 @@ export const register = async (
   // Sanitize inputs
   const sanitizedEmail = sanitizeEmail(email);
   if (!sanitizedEmail) {
-    authRateLimiter.recordRequest();
+    signupRateLimiter.recordRequest();
     return {
       success: false,
       error: 'Please enter a valid email address.'
@@ -176,7 +177,7 @@ export const register = async (
   if (displayName) {
     sanitizedName = sanitizeCustomerName(displayName);
     if (!sanitizedName) {
-      authRateLimiter.recordRequest();
+      signupRateLimiter.recordRequest();
       return {
         success: false,
         error: 'Please enter a valid name.'
@@ -186,7 +187,7 @@ export const register = async (
 
   // Basic password validation
   if (!password || password.length < 6) {
-    authRateLimiter.recordRequest();
+    signupRateLimiter.recordRequest();
     return {
       success: false,
       error: 'Password must be at least 6 characters long.'
@@ -204,7 +205,7 @@ export const register = async (
     }
 
     // Record successful registration
-    authRateLimiter.recordRequest();
+    signupRateLimiter.recordRequest();
 
     // Initialize encrypted storage for the new user
     await EncryptedStorage.initialize(userCredential.user.uid);
@@ -217,7 +218,7 @@ export const register = async (
 
   } catch (error: any) {
     // Record failed attempt
-    authRateLimiter.recordRequest();
+    signupRateLimiter.recordRequest();
 
     const authError = error as AuthError;
     let errorMessage = 'Registration failed. Please try again.';
@@ -313,7 +314,7 @@ export const initializeAuth = (onAuthChange?: (user: User | null) => void) => {
  */
 export const sendPasswordReset = async (email: string): Promise<AuthResult> => {
   // Check rate limit
-  const rateLimit = authRateLimiter.checkLimit();
+  const rateLimit = passwordResetRateLimiter.checkLimit();
 
   if (!rateLimit.allowed) {
     return {
@@ -324,7 +325,7 @@ export const sendPasswordReset = async (email: string): Promise<AuthResult> => {
 
   const sanitizedEmail = sanitizeEmail(email);
   if (!sanitizedEmail) {
-    authRateLimiter.recordRequest();
+    passwordResetRateLimiter.recordRequest();
     return {
       success: false,
       error: 'Please enter a valid email address.'
@@ -335,15 +336,15 @@ export const sendPasswordReset = async (email: string): Promise<AuthResult> => {
     const { sendPasswordResetEmail } = await import('firebase/auth');
     await sendPasswordResetEmail(auth, sanitizedEmail);
 
-    authRateLimiter.recordRequest();
+    passwordResetRateLimiter.recordRequest();
 
     return {
       success: true,
       message: 'Password reset email sent. Please check your inbox.'
-    } as any;
+    };
 
   } catch (error: any) {
-    authRateLimiter.recordRequest();
+    passwordResetRateLimiter.recordRequest();
 
     const authError = error as AuthError;
     let errorMessage = 'Failed to send password reset email.';
@@ -417,7 +418,9 @@ export const updateUserProfile = async (updates: {
 export const getAuthStatus = () => {
   const user = getCurrentUser();
   const isAuth = isAuthenticated();
-  const rateLimitStatus = authRateLimiter.getStatus();
+  const loginRateLimitStatus = loginRateLimiter.getStatus();
+  const signupRateLimitStatus = signupRateLimiter.getStatus();
+  const passwordResetRateLimitStatus = passwordResetRateLimiter.getStatus();
 
   return {
     isAuthenticated: isAuth,
@@ -427,12 +430,26 @@ export const getAuthStatus = () => {
       displayName: user.displayName,
       emailVerified: user.emailVerified
     } : null,
-    rateLimit: {
-      requests: rateLimitStatus.requests,
-      maxRequests: rateLimitStatus.maxRequests,
-      isBlocked: rateLimitStatus.isBlocked,
-      blockedUntil: rateLimitStatus.blockedUntil
+    rateLimits: {
+      login: {
+        requests: loginRateLimitStatus.requests,
+        maxRequests: loginRateLimitStatus.maxRequests,
+        isBlocked: loginRateLimitStatus.isBlocked,
+        blockedUntil: loginRateLimitStatus.blockedUntil
+      },
+      signup: {
+        requests: signupRateLimitStatus.requests,
+        maxRequests: signupRateLimitStatus.maxRequests,
+        isBlocked: signupRateLimitStatus.isBlocked,
+        blockedUntil: signupRateLimitStatus.blockedUntil
+      },
+      passwordReset: {
+        requests: passwordResetRateLimitStatus.requests,
+        maxRequests: passwordResetRateLimitStatus.maxRequests,
+        isBlocked: passwordResetRateLimitStatus.isBlocked,
+        blockedUntil: passwordResetRateLimitStatus.blockedUntil
+      }
     },
-    encryptedStorageReady: EncryptedStorage.isInitialized()
+    encryptedStorageReady: EncryptedStorage.isReady()
   };
 };

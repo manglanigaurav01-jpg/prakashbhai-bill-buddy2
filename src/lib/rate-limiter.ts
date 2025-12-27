@@ -168,9 +168,21 @@ export class RateLimiter {
 }
 
 // Pre-configured rate limiters for common operations
-export const authRateLimiter = RateLimiter.getInstance('auth', {
+export const loginRateLimiter = RateLimiter.getInstance('login', {
   maxRequests: 5, // 5 attempts
   windowMs: 15 * 60 * 1000, // 15 minutes
+  blockDurationMs: 60 * 60 * 1000 // 1 hour block
+});
+
+export const signupRateLimiter = RateLimiter.getInstance('signup', {
+  maxRequests: 3, // 3 attempts
+  windowMs: 60 * 60 * 1000, // 1 hour
+  blockDurationMs: 60 * 60 * 1000 // 1 hour block
+});
+
+export const passwordResetRateLimiter = RateLimiter.getInstance('password_reset', {
+  maxRequests: 3, // 3 attempts
+  windowMs: 60 * 60 * 1000, // 1 hour
   blockDurationMs: 60 * 60 * 1000 // 1 hour block
 });
 
