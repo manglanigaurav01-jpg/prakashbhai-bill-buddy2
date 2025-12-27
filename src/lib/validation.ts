@@ -1,337 +1,517 @@
-// Validation utilities for form inputs
+/**
+ * Validation Utilities for Bill Buddy App
+ *
+ * Provides comprehensive validation functions for all data types
+ * used in the application with security-focused input validation.
+ */
+
+import { sanitizeCustomerName, sanitizeEmail, sanitizePhoneNumber, sanitizeNumber, sanitizeBillParticulars, validateLength } from './security';
 
 export interface ValidationResult {
   isValid: boolean;
-  error?: string;
-}
-
-export interface DataValidationResult {
-  isConsistent: boolean;
   errors: string[];
+  sanitizedValue?: any;
 }
 
-export const validateRequired = (value: string | number | null | undefined, fieldName: string): ValidationResult => {
-  if (value === null || value === undefined || value === '') {
-    return { isValid: false, error: `${fieldName} is required` };
-  }
-  return { isValid: true };
-};
+export interface Customer {
+  id?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-export const validateMinLength = (value: string, minLength: number, fieldName: string): ValidationResult => {
-  if (value.length < minLength) {
-    return { isValid: false, error: `${fieldName} must be at least ${minLength} characters long` };
-  }
-  return { isValid: true };
-};
+export interface Bill {
+  id?: string;
+  customerId: string;
+  customerName: string;
+  particulars: string;
+  amount: number;
+  date: Date;
+  dueDate?: Date;
+  status: 'pending' | 'paid' | 'overdue';
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-export const validateMaxLength = (value: string, maxLength: number, fieldName: string): ValidationResult => {
-  if (value.length > maxLength) {
-    return { isValid: false, error: `${fieldName} must be no more than ${maxLength} characters long` };
-  }
-  return { isValid: true };
-};
+export interface Payment {
+  id?: string;
+  billId: string;
+  customerId: string;
+  amount: number;
+  date: Date;
+  method: 'cash' | 'card' | 'bank_transfer' | 'cheque' | 'other';
+  notes?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-export const validateNumber = (value: string | number, fieldName: string): ValidationResult => {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(num)) {
-    return { isValid: false, error: `${fieldName} must be a valid number` };
-  }
-  return { isValid: true };
-};
-
-export const validatePositiveNumber = (value: string | number, fieldName: string): ValidationResult => {
-  const numResult = validateNumber(value, fieldName);
-  if (!numResult.isValid) return numResult;
-  
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (num <= 0) {
-    return { isValid: false, error: `${fieldName} must be greater than 0` };
-  }
-  return { isValid: true };
-};
-
-export const validateNonNegativeNumber = (value: string | number, fieldName: string): ValidationResult => {
-  const numResult = validateNumber(value, fieldName);
-  if (!numResult.isValid) return numResult;
-  
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (num < 0) {
-    return { isValid: false, error: `${fieldName} cannot be negative` };
-  }
-  return { isValid: true };
-};
-
-export const checkDataConsistency = (data: any): DataValidationResult => {
+/**
+ * Validate customer data object
+ * @param customer - Customer object to validate
+ * @returns Validation result
+ */
+export function validateCustomerData(customer: Partial<Customer>): ValidationResult {
   const errors: string[] = [];
-  
-  try {
-    // Check if data has the expected structure
-    if (!data || typeof data !== 'object') {
-      errors.push('Invalid data format');
-      return { isConsistent: false, errors };
+  const sanitizedCustomer: Partial<Customer> = {};
+
+  // Required fields
+  if (!customer.name || typeof customer.name !== 'string') {
+    errors.push('Customer name is required');
+  } else {
+    const sanitizedName = sanitizeCustomerName(customer.name);
+    if (!sanitizedName) {
+      errors.push('Customer name contains invalid characters');
+    } else if (!validateLength(sanitizedName, 1, 100)) {
+      errors.push('Customer name must be between 1 and 100 characters');
+    } else {
+      sanitizedCustomer.name = sanitizedName;
     }
+  }
 
-    // Check for required top-level properties
-    const requiredProperties = ['customers', 'bills', 'payments'];
-    requiredProperties.forEach(prop => {
-      if (!data[prop] || !Array.isArray(data[prop])) {
-        errors.push(`Missing or invalid ${prop} data`);
-      }
-    });
-
-    // Check data relationships
-    if (Array.isArray(data.bills)) {
-      data.bills.forEach((bill: any, index: number) => {
-        if (!bill.customerId || !bill.id) {
-          errors.push(`Bill at index ${index} is missing required fields`);
-        }
-      });
+  // Optional email validation
+  if (customer.email) {
+    const sanitizedEmail = sanitizeEmail(customer.email);
+    if (!sanitizedEmail) {
+      errors.push('Invalid email format');
+    } else {
+      sanitizedCustomer.email = sanitizedEmail;
     }
+  }
 
-    if (Array.isArray(data.payments)) {
-      data.payments.forEach((payment: any, index: number) => {
-        if (!payment.customerId || !payment.id) {
-          errors.push(`Payment at index ${index} is missing required fields`);
-        }
-      });
+  // Optional phone validation
+  if (customer.phone) {
+    const sanitizedPhone = sanitizePhoneNumber(customer.phone);
+    if (sanitizedPhone && !validateLength(sanitizedPhone, 7, 20)) {
+      errors.push('Phone number must be between 7 and 20 characters');
+    } else if (sanitizedPhone) {
+      sanitizedCustomer.phone = sanitizedPhone;
     }
-
-    return {
-      isConsistent: errors.length === 0,
-      errors
-    };
-  } catch (error) {
-    errors.push('Error validating data structure');
-    return { isConsistent: false, errors };
   }
-};
 
-export const validateInteger = (value: string | number, fieldName: string): ValidationResult => {
-  const numResult = validateNumber(value, fieldName);
-  if (!numResult.isValid) return numResult;
-  
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (!Number.isInteger(num)) {
-    return { isValid: false, error: `${fieldName} must be a whole number` };
+  // Optional address validation
+  if (customer.address) {
+    if (typeof customer.address !== 'string') {
+      errors.push('Address must be a string');
+    } else if (!validateLength(customer.address, 0, 500)) {
+      errors.push('Address must be less than 500 characters');
+    } else {
+      sanitizedCustomer.address = customer.address.trim();
+    }
   }
-  return { isValid: true };
-};
 
-export const validateEmail = (value: string, fieldName: string): ValidationResult => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(value)) {
-    return { isValid: false, error: `${fieldName} must be a valid email address` };
-  }
-  return { isValid: true };
-};
-
-export const validatePhone = (value: string, fieldName: string): ValidationResult => {
-  const phoneRegex = /^[+]?[1-9][\d]{0,15}$/;
-  if (!phoneRegex.test(value.replace(/[\s\-()]/g, ''))) {
-    return { isValid: false, error: `${fieldName} must be a valid phone number` };
-  }
-  return { isValid: true };
-};
-
-export const validateDate = (value: Date | string | null | undefined, fieldName: string): ValidationResult => {
-  if (!value) {
-    return { isValid: false, error: `${fieldName} is required` };
-  }
-  
-  const date = value instanceof Date ? value : new Date(value);
-  if (isNaN(date.getTime())) {
-    return { isValid: false, error: `${fieldName} must be a valid date` };
-  }
-  
-  return { isValid: true };
-};
-
-export const validateFutureDate = (value: Date | string | null | undefined, fieldName: string): ValidationResult => {
-  const dateResult = validateDate(value, fieldName);
-  if (!dateResult.isValid) return dateResult;
-  
-  if (!value) {
-    return { isValid: false, error: `${fieldName} is required` };
-  }
-  
-  const date = value instanceof Date ? value : new Date(value);
-  if (date <= new Date()) {
-    return { isValid: false, error: `${fieldName} must be in the future` };
-  }
-  
-  return { isValid: true };
-};
-
-export const validatePastDate = (value: Date | string | null | undefined, fieldName: string): ValidationResult => {
-  const dateResult = validateDate(value, fieldName);
-  if (!dateResult.isValid) return dateResult;
-  
-  if (!value) {
-    return { isValid: false, error: `${fieldName} is required` };
-  }
-  
-  const date = value instanceof Date ? value : new Date(value);
-  if (date >= new Date()) {
-    return { isValid: false, error: `${fieldName} must be in the past` };
-  }
-  
-  return { isValid: true };
-};
-
-// Composite validators
-export const validateCustomerName = (value: string): ValidationResult => {
-  const required = validateRequired(value, 'Customer name');
-  if (!required.isValid) return required;
-  
-  const trimmed = value.trim();
-  const minLength = validateMinLength(trimmed, 2, 'Customer name');
-  if (!minLength.isValid) return minLength;
-  
-  const maxLength = validateMaxLength(trimmed, 100, 'Customer name');
-  if (!maxLength.isValid) return maxLength;
-  
-  return { isValid: true };
-};
-
-export const validateItemName = (value: string): ValidationResult => {
-  const required = validateRequired(value, 'Item name');
-  if (!required.isValid) return required;
-  
-  const trimmed = value.trim();
-  const minLength = validateMinLength(trimmed, 1, 'Item name');
-  if (!minLength.isValid) return minLength;
-  
-  const maxLength = validateMaxLength(trimmed, 100, 'Item name');
-  if (!maxLength.isValid) return maxLength;
-  
-  return { isValid: true };
-};
-
-export const validateItemRate = (value: string | number): ValidationResult => {
-  return validatePositiveNumber(value, 'Item rate');
-};
-
-export const validateItemQuantity = (value: string | number): ValidationResult => {
-  const positiveResult = validatePositiveNumber(value, 'Quantity');
-  if (!positiveResult.isValid) return positiveResult;
-  
-  return validateInteger(value, 'Quantity');
-};
-
-export const validatePaymentAmount = (value: string | number): ValidationResult => {
-  return validatePositiveNumber(value, 'Payment amount');
-};
-
-export const validateBillDate = (value: Date | string | null | undefined): ValidationResult => {
-  return validateDate(value, 'Bill date');
-};
-
-export const validatePaymentDate = (value: Date | string | null | undefined): ValidationResult => {
-  return validateDate(value, 'Payment date');
-};
-
-// Validate bill date with future date warning (allows but warns)
-export interface ValidationResultWithWarning extends ValidationResult {
-  warning?: string;
-}
-
-export const validateBillDateWithFutureWarning = (value: Date | string | null | undefined): ValidationResultWithWarning => {
-  const dateResult = validateDate(value, 'Bill date');
-  if (!dateResult.isValid) return dateResult;
-  
-  if (!value) {
-    return { isValid: false, error: 'Bill date is required' };
-  }
-  
-  const date = value instanceof Date ? value : new Date(value);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const billDate = new Date(date);
-  billDate.setHours(0, 0, 0, 0);
-  
-  if (billDate > today) {
-    const daysDiff = Math.ceil((billDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return {
-      isValid: true,
-      warning: `Bill date is ${daysDiff} day${daysDiff > 1 ? 's' : ''} in the future. Please verify this is correct.`
-    };
-  }
-  
-  return { isValid: true };
-};
-
-// Validate payment date with future date warning
-export const validatePaymentDateWithFutureWarning = (value: Date | string | null | undefined): ValidationResultWithWarning => {
-  const dateResult = validateDate(value, 'Payment date');
-  if (!dateResult.isValid) return dateResult;
-  
-  if (!value) {
-    return { isValid: false, error: 'Payment date is required' };
-  }
-  
-  const date = value instanceof Date ? value : new Date(value);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const paymentDate = new Date(date);
-  paymentDate.setHours(0, 0, 0, 0);
-  
-  if (paymentDate > today) {
-    const daysDiff = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return {
-      isValid: true,
-      warning: `Payment date is ${daysDiff} day${daysDiff > 1 ? 's' : ''} in the future. Please verify this is correct.`
-    };
-  }
-  
-  return { isValid: true };
-};
-
-// Validate unusually large amounts (warns if amount is significantly higher than average)
-export const validateLargeAmount = (
-  amount: number,
-  type: 'bill' | 'payment',
-  historicalData?: { bills?: number[]; payments?: number[] }
-): ValidationResultWithWarning => {
-  const positiveResult = validatePositiveNumber(amount, type === 'bill' ? 'Bill amount' : 'Payment amount');
-  if (!positiveResult.isValid) return positiveResult;
-  
-  if (!historicalData) {
-    return { isValid: true };
-  }
-  
-  const data = type === 'bill' ? historicalData.bills : historicalData.payments;
-  if (!data || data.length === 0) {
-    return { isValid: true };
-  }
-  
-  // Calculate average and standard deviation
-  const avg = data.reduce((sum, val) => sum + val, 0) / data.length;
-  const variance = data.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / data.length;
-  const stdDev = Math.sqrt(variance);
-  
-  // Warn if amount is more than 3 standard deviations above average
-  const threshold = avg + (3 * stdDev);
-  
-  if (amount > threshold && amount > avg * 1.5) {
-    const percentage = ((amount / avg - 1) * 100).toFixed(0);
-    return {
-      isValid: true,
-      warning: `This ${type} amount (₹${amount.toLocaleString()}) is ${percentage}% higher than your average ${type === 'bill' ? 'bill' : 'payment'} (₹${avg.toLocaleString()}). Please verify this is correct.`
-    };
-  }
-  
-  return { isValid: true };
-};
-
-// Form validation helper
-export const validateForm = (validations: ValidationResult[]): { isValid: boolean; errors: string[] } => {
-  const errors = validations
-    .filter(v => !v.isValid)
-    .map(v => v.error!)
-    .filter(Boolean);
-  
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    sanitizedValue: sanitizedCustomer
   };
-};
+}
+
+/**
+ * Validate bill data object
+ * @param bill - Bill object to validate
+ * @returns Validation result
+ */
+export function validateBillData(bill: Partial<Bill>): ValidationResult {
+  const errors: string[] = [];
+  const sanitizedBill: Partial<Bill> = {};
+
+  // Required customer ID
+  if (!bill.customerId || typeof bill.customerId !== 'string') {
+    errors.push('Customer ID is required');
+  } else {
+    sanitizedBill.customerId = bill.customerId.trim();
+  }
+
+  // Required customer name
+  if (!bill.customerName || typeof bill.customerName !== 'string') {
+    errors.push('Customer name is required');
+  } else {
+    const sanitizedName = sanitizeCustomerName(bill.customerName);
+    if (!sanitizedName) {
+      errors.push('Customer name contains invalid characters');
+    } else if (!validateLength(sanitizedName, 1, 100)) {
+      errors.push('Customer name must be between 1 and 100 characters');
+    } else {
+      sanitizedBill.customerName = sanitizedName;
+    }
+  }
+
+  // Required particulars
+  if (!bill.particulars || typeof bill.particulars !== 'string') {
+    errors.push('Bill particulars are required');
+  } else {
+    const sanitizedParticulars = sanitizeBillParticulars(bill.particulars);
+    if (!sanitizedParticulars) {
+      errors.push('Bill particulars contain invalid characters');
+    } else if (!validateLength(sanitizedParticulars, 1, 500)) {
+      errors.push('Bill particulars must be between 1 and 500 characters');
+    } else {
+      sanitizedBill.particulars = sanitizedParticulars;
+    }
+  }
+
+  // Required amount
+  if (bill.amount === undefined || bill.amount === null) {
+    errors.push('Bill amount is required');
+  } else {
+    const sanitizedAmount = sanitizeNumber(bill.amount);
+    if (sanitizedAmount <= 0) {
+      errors.push('Bill amount must be greater than 0');
+    } else if (sanitizedAmount > 10000000) { // 1 crore limit
+      errors.push('Bill amount cannot exceed 10,000,000');
+    } else {
+      sanitizedBill.amount = sanitizedAmount;
+    }
+  }
+
+  // Required date
+  if (!bill.date) {
+    errors.push('Bill date is required');
+  } else {
+    const dateResult = validateDate(bill.date);
+    if (!dateResult.isValid) {
+      errors.push(...dateResult.errors);
+    } else {
+      sanitizedBill.date = dateResult.sanitizedValue;
+    }
+  }
+
+  // Optional due date
+  if (bill.dueDate) {
+    const dueDateResult = validateDate(bill.dueDate);
+    if (!dueDateResult.isValid) {
+      errors.push('Invalid due date: ' + dueDateResult.errors.join(', '));
+    } else {
+      sanitizedBill.dueDate = dueDateResult.sanitizedValue;
+    }
+  }
+
+  // Required status
+  if (!bill.status || !['pending', 'paid', 'overdue'].includes(bill.status)) {
+    errors.push('Bill status must be one of: pending, paid, overdue');
+  } else {
+    sanitizedBill.status = bill.status;
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: sanitizedBill
+  };
+}
+
+/**
+ * Validate payment data object
+ * @param payment - Payment object to validate
+ * @returns Validation result
+ */
+export function validatePaymentData(payment: Partial<Payment>): ValidationResult {
+  const errors: string[] = [];
+  const sanitizedPayment: Partial<Payment> = {};
+
+  // Required bill ID
+  if (!payment.billId || typeof payment.billId !== 'string') {
+    errors.push('Bill ID is required');
+  } else {
+    sanitizedPayment.billId = payment.billId.trim();
+  }
+
+  // Required customer ID
+  if (!payment.customerId || typeof payment.customerId !== 'string') {
+    errors.push('Customer ID is required');
+  } else {
+    sanitizedPayment.customerId = payment.customerId.trim();
+  }
+
+  // Required amount
+  if (payment.amount === undefined || payment.amount === null) {
+    errors.push('Payment amount is required');
+  } else {
+    const sanitizedAmount = sanitizeNumber(payment.amount);
+    if (sanitizedAmount <= 0) {
+      errors.push('Payment amount must be greater than 0');
+    } else if (sanitizedAmount > 10000000) { // 1 crore limit
+      errors.push('Payment amount cannot exceed 10,000,000');
+    } else {
+      sanitizedPayment.amount = sanitizedAmount;
+    }
+  }
+
+  // Required date
+  if (!payment.date) {
+    errors.push('Payment date is required');
+  } else {
+    const dateResult = validateDate(payment.date);
+    if (!dateResult.isValid) {
+      errors.push(...dateResult.errors);
+    } else {
+      sanitizedPayment.date = dateResult.sanitizedValue;
+    }
+  }
+
+  // Required payment method
+  if (!payment.method || !['cash', 'card', 'bank_transfer', 'cheque', 'other'].includes(payment.method)) {
+    errors.push('Payment method must be one of: cash, card, bank_transfer, cheque, other');
+  } else {
+    sanitizedPayment.method = payment.method;
+  }
+
+  // Optional notes
+  if (payment.notes) {
+    if (typeof payment.notes !== 'string') {
+      errors.push('Payment notes must be a string');
+    } else if (!validateLength(payment.notes, 0, 500)) {
+      errors.push('Payment notes must be less than 500 characters');
+    } else {
+      sanitizedPayment.notes = sanitizeBillParticulars(payment.notes);
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: sanitizedPayment
+  };
+}
+
+/**
+ * Validate required field
+ * @param value - Value to check
+ * @param fieldName - Name of the field for error messages
+ * @returns Validation result
+ */
+export function validateRequired(value: any, fieldName: string): ValidationResult {
+  const isValid = value !== null && value !== undefined && value !== '';
+
+  return {
+    isValid,
+    errors: isValid ? [] : [`${fieldName} is required`],
+    sanitizedValue: value
+  };
+}
+
+/**
+ * Validate email format
+ * @param email - Email string to validate
+ * @returns Validation result
+ */
+export function validateEmailFormat(email: string): ValidationResult {
+  if (typeof email !== 'string') {
+    return {
+      isValid: false,
+      errors: ['Email must be a string'],
+      sanitizedValue: email
+    };
+  }
+
+  const sanitizedEmail = sanitizeEmail(email);
+
+  if (!sanitizedEmail) {
+    return {
+      isValid: false,
+      errors: ['Invalid email format'],
+      sanitizedValue: email
+    };
+  }
+
+  // Additional validation for common email issues
+  const errors: string[] = [];
+
+  if (email.length > 254) {
+    errors.push('Email is too long');
+  }
+
+  if (email.includes('..')) {
+    errors.push('Email contains consecutive dots');
+  }
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errors.push('Invalid email format');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: sanitizedEmail
+  };
+}
+
+/**
+ * Validate phone number format
+ * @param phone - Phone number string to validate
+ * @returns Validation result
+ */
+export function validatePhoneNumberFormat(phone: string): ValidationResult {
+  if (typeof phone !== 'string') {
+    return {
+      isValid: false,
+      errors: ['Phone number must be a string'],
+      sanitizedValue: phone
+    };
+  }
+
+  const sanitizedPhone = sanitizePhoneNumber(phone);
+  const errors: string[] = [];
+
+  // Basic length check
+  if (sanitizedPhone.length < 7) {
+    errors.push('Phone number is too short');
+  }
+
+  if (sanitizedPhone.length > 20) {
+    errors.push('Phone number is too long');
+  }
+
+  // Check for at least some digits
+  const digitCount = (sanitizedPhone.match(/\d/g) || []).length;
+  if (digitCount < 7) {
+    errors.push('Phone number must contain at least 7 digits');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: sanitizedPhone
+  };
+}
+
+/**
+ * Validate amount (must be positive number within reasonable limits)
+ * @param amount - Amount to validate
+ * @returns Validation result
+ */
+export function validateAmount(amount: number): ValidationResult {
+  const errors: string[] = [];
+
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    errors.push('Amount must be a valid number');
+    return { isValid: false, errors, sanitizedValue: amount };
+  }
+
+  if (amount <= 0) {
+    errors.push('Amount must be greater than 0');
+  }
+
+  if (amount > 10000000) { // 1 crore limit
+    errors.push('Amount cannot exceed 10,000,000');
+  }
+
+  // Check for too many decimal places (max 2)
+  const decimalPlaces = (amount.toString().split('.')[1] || '').length;
+  if (decimalPlaces > 2) {
+    errors.push('Amount cannot have more than 2 decimal places');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: Math.round(amount * 100) / 100 // Round to 2 decimal places
+  };
+}
+
+/**
+ * Validate date (must be valid Date object or parseable date string)
+ * @param date - Date to validate
+ * @returns Validation result
+ */
+export function validateDate(date: Date | string): ValidationResult {
+  let dateObj: Date;
+
+  if (date instanceof Date) {
+    dateObj = date;
+  } else if (typeof date === 'string') {
+    dateObj = new Date(date);
+  } else {
+    return {
+      isValid: false,
+      errors: ['Date must be a Date object or valid date string'],
+      sanitizedValue: date
+    };
+  }
+
+  const errors: string[] = [];
+
+  if (isNaN(dateObj.getTime())) {
+    errors.push('Invalid date format');
+  } else {
+    // Check if date is not too far in the future (max 1 year ahead)
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+    // Check if date is not too far in the past (max 10 years ago)
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+
+    if (dateObj > oneYearFromNow) {
+      errors.push('Date cannot be more than 1 year in the future');
+    }
+
+    if (dateObj < tenYearsAgo) {
+      errors.push('Date cannot be more than 10 years in the past');
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedValue: dateObj
+  };
+}
+
+/**
+ * Comprehensive data validation with multiple checks
+ * @param data - Data to validate
+ * @param type - Type of data ('customer', 'bill', 'payment')
+ * @returns Validation result
+ */
+export function validateData(data: any, type: 'customer' | 'bill' | 'payment'): ValidationResult {
+  switch (type) {
+    case 'customer':
+      return validateCustomerData(data);
+    case 'bill':
+      return validateBillData(data);
+    case 'payment':
+      return validatePaymentData(data);
+    default:
+      return {
+        isValid: false,
+        errors: ['Unknown data type'],
+        sanitizedValue: data
+      };
+  }
+}
+
+/**
+ * Batch validation for multiple items
+ * @param items - Array of items to validate
+ * @param type - Type of data for each item
+ * @returns Array of validation results
+ */
+export function validateBatch(items: any[], type: 'customer' | 'bill' | 'payment'): ValidationResult[] {
+  return items.map(item => validateData(item, type));
+}
+
+/**
+ * Get validation summary for batch validation
+ * @param results - Array of validation results
+ * @returns Summary object
+ */
+export function getValidationSummary(results: ValidationResult[]): {
+  totalItems: number;
+  validItems: number;
+  invalidItems: number;
+  allErrors: string[];
+} {
+  const validItems = results.filter(r => r.isValid).length;
+  const allErrors = results.flatMap(r => r.errors);
+
+  return {
+    totalItems: results.length,
+    validItems,
+    invalidItems: results.length - validItems,
+    allErrors: [...new Set(allErrors)] // Remove duplicates
+  };
+}
