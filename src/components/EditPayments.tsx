@@ -14,7 +14,8 @@ import { toast } from '@/hooks/use-toast';
 import { getPayments, getCustomers, updatePayment, deletePayment, saveCustomer } from '@/lib/storage';
 import { Customer, Payment } from '@/types';
 import { SwipeableItem } from '@/components/SwipeableItem';
-import { hapticMedium, hapticError, hapticSuccess } from '@/lib/haptics';
+import { hapticMedium, hapticError, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { validatePaymentDateWithFutureWarning, validateLargeAmount } from '@/lib/validation';
 
 
 interface EditPaymentsProps {
@@ -117,11 +118,6 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
       return;
     }
 
-    // Validate date with future warning
-    const { validatePaymentDateWithFutureWarning, validateLargeAmount } = await import('@/lib/validation');
-    const { getPayments } = await import('@/lib/storage');
-    const { hapticWarning, hapticSuccess } = await import('@/lib/haptics');
-    
     const dateValidation = validatePaymentDateWithFutureWarning(editingDate);
     if (dateValidation.warning) {
       toast({

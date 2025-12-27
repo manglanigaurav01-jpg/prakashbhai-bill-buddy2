@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
-import { saveBill } from '@/lib/storage';
+import { saveBill, getBills } from '@/lib/storage';
 import { generateBillPDF } from '@/lib/pdf';
 import { Customer, BillItem } from '@/types';
 import { CustomerSelector, BillForm } from './EnhancedCreateBill/index';
+import { validateBillDateWithFutureWarning, validateLargeAmount } from '@/lib/validation';
+import { hapticWarning, hapticSuccess } from '@/lib/haptics';
 
 interface CreateBillProps {
   onNavigate: (view: string) => void;
@@ -125,11 +127,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
   const saveBillOnly = async () => {
     if (!validateBill()) return;
 
-    // Validate date with future warning
-    const { validateBillDateWithFutureWarning, validateLargeAmount } = await import('@/lib/validation');
-    const { getBills } = await import('@/lib/storage');
-    const { hapticWarning } = await import('@/lib/haptics');
-
     const dateValidation = validateBillDateWithFutureWarning(billDate);
     if (dateValidation.warning) {
       toast({
@@ -169,7 +166,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
 
       saveBill(billData);
 
-      const { hapticSuccess } = await import('@/lib/haptics');
       hapticSuccess();
 
       toast({
@@ -197,11 +193,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
 
   const saveBillAsPDF = async () => {
     if (!validateBill()) return;
-
-    // Validate date with future warning
-    const { validateBillDateWithFutureWarning, validateLargeAmount } = await import('@/lib/validation');
-    const { getBills } = await import('@/lib/storage');
-    const { hapticWarning } = await import('@/lib/haptics');
 
     const dateValidation = validateBillDateWithFutureWarning(billDate);
     if (dateValidation.warning) {
@@ -244,7 +235,6 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
       const result = await generateBillPDF(savedBill);
 
       if (result.success) {
-        const { hapticSuccess } = await import('@/lib/haptics');
         hapticSuccess();
         toast({
           title: "Success",

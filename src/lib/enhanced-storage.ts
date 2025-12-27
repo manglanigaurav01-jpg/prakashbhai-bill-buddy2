@@ -1,5 +1,5 @@
 import { Customer, Bill, Payment, ItemMaster } from '@/types';
-import { validateBillDate, validatePaymentDate } from './validation';
+import { validateBillDate, validateDate } from './validation';
 import { buildIndexes, invalidateIndexes, needsReindexing } from './indexing';
 import { createLocalBackup } from './data-backup';
 
@@ -82,7 +82,7 @@ export const saveBill = (bill: Omit<Bill, 'id' | 'createdAt'>): Bill => {
   // Validate bill
   const dateValidation = validateBillDate(bill.date);
   if (!dateValidation.isValid) {
-    throw new Error(dateValidation.error || 'Invalid bill date');
+    throw new Error(dateValidation.errors[0] || 'Invalid bill date');
   }
 
   if (!bill.customerId) {
@@ -123,9 +123,9 @@ export const getPayments = (): Payment[] => {
 
 export const savePayment = (payment: Omit<Payment, 'id' | 'createdAt'>): Payment => {
   // Validate payment
-  const dateValidation = validatePaymentDate(payment.date);
+  const dateValidation = validateDate(payment.date);
   if (!dateValidation.isValid) {
-    throw new Error(dateValidation.error || 'Invalid payment date');
+    throw new Error(dateValidation.errors[0] || 'Invalid payment date');
   }
 
   if (!payment.customerId) {

@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Customer } from '@/types';
 import { getCustomers, saveCustomer } from '@/lib/storage';
-import { validateCustomerInput } from '@/lib/security';
+import { validateCustomerName } from '@/lib/validation';
 import { toast } from "@/hooks/use-toast";
 
 interface CustomerSelectorProps {
@@ -43,11 +43,11 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       return;
     }
 
-    const validation = validateCustomerInput(searchQuery.trim());
+    const validation = validateCustomerName(searchQuery.trim());
     if (!validation.isValid) {
       toast({
         title: "Error",
-        description: validation.error,
+        description: validation.errors[0],
         variant: "destructive"
       });
       return;

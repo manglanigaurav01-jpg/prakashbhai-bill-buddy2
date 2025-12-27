@@ -149,7 +149,7 @@ export const validateItemEnhanced = (
     };
   }
   
-  return { isValid: true };
+  return { isValid: true, errors: [] };
 };
 
 // Data integrity checks

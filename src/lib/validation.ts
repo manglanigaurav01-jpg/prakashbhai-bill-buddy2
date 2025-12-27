@@ -649,6 +649,90 @@ export function validatePhone(phone: string, fieldName: string): ValidationResul
   return { ...result, errors: result.errors.map(err => `${fieldName}: ${err}`) };
 }
 
+export interface ValidationResultWithWarning extends ValidationResult {
+  warning?: string;
+}
+
+export function validatePaymentDateWithFutureWarning(date: Date): ValidationResultWithWarning {
+  const basicValidation = validateDate(date);
+  if (!basicValidation.isValid) {
+    return basicValidation;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Compare dates only
+
+  if (basicValidation.sanitizedValue > today) {
+    return {
+      ...basicValidation,
+      warning: "The selected date is in the future. Please confirm this is correct.",
+    };
+  }
+
+  return basicValidation;
+}
+
+export function validateBillDateWithFutureWarning(date: Date): ValidationResultWithWarning {
+  // This can be the same as the payment date validation for now
+  return validatePaymentDateWithFutureWarning(date);
+}
+
+export function validateLargeAmount(
+  amount: number,
+  type: 'bill' | 'payment',
+  context: { bills?: number[]; payments?: number[] }
+): ValidationResultWithWarning {
+  const basicValidation = validateAmount(amount);
+  if (!basicValidation.isValid) {
+    return basicValidation;
+  }
+
+  const data = type === 'bill' ? context.bills : context.payments;
+
+  if (data && data.length > 1) { // Need at least 2 data points to calculate deviation
+    const average = data.reduce((a, b) => a + b, 0) / data.length;
+    const standardDeviation = Math.sqrt(
+      data.map(x => Math.pow(x - average, 2)).reduce((a, b) => a + b, 0) / data.length
+    );
+
+    // Warn if the amount is more than 2 standard deviations above the average, and a minimum amount
+    if (amount > average + 2 * standardDeviation && amount > 500) { 
+      return {
+        ...basicValidation,
+        warning: `This amount (₹${amount.toFixed(2)}) is significantly higher than the average for this ${type} (avg: ₹${average.toFixed(2)}). Please double-check.`,
+      };
+    }
+  }
+
+  return { ...result, errors: result.errors.map(err => `${fieldName}: ${err}`) };
+}
+
+export function checkDataConsistency(data: any): { isConsistent: boolean, errors: string[] } {
+  const errors: string[] = [];
+  if (!data || !data.customers || !data.bills || !data.payments) {
+    return { isConsistent: false, errors: ['Invalid backup data structure'] };
+  }
+  
+  const customerIds = new Set(data.customers.map((c: any) => c.id));
+
+  data.bills.forEach((bill: any) => {
+    if (!bill.customerId || !customerIds.has(bill.customerId)) {
+      errors.push(`Bill with id ${bill.id} references non-existent customer ${bill.customerId}`);
+    }
+  });
+
+  data.payments.forEach((payment: any) => {
+    if (!payment.customerId || !customerIds.has(payment.customerId)) {
+      errors.push(`Payment with id ${payment.id} references non-existent customer ${payment.customerId}`);
+    }
+  });
+
+  return {
+    isConsistent: errors.length === 0,
+    errors,
+  };
+}
+
 /**
  * Validate form with multiple validations
  * @param validations - Array of validation results

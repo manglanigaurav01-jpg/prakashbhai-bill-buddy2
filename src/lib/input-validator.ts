@@ -500,8 +500,12 @@ export class InputValidator {
       // Nested validation
       if (rule.type === 'object' && rule.nestedSchema && typeof value === 'object') {
         const nestedResult = await this.validateFields(value, rule.nestedSchema, options, fieldPath, depth + 1);
-        errors.push(...nestedResult.errors);
-        warnings.push(...nestedResult.warnings);
+        for (const error of nestedResult.errors) {
+            errors.push(error);
+        }
+        for (const warning of nestedResult.warnings) {
+            warnings.push(warning);
+        }
       }
 
       // Array validation
@@ -510,8 +514,12 @@ export class InputValidator {
           const itemPath = `${fieldPath}[${i}]`;
           if (rule.nestedSchema) {
             const nestedResult = await this.validateFields(value[i], rule.nestedSchema, options, itemPath, depth + 1);
-            errors.push(...nestedResult.errors);
-            warnings.push(...nestedResult.warnings);
+            for (const error of nestedResult.errors) {
+                errors.push(error);
+            }
+            for (const warning of nestedResult.warnings) {
+                warnings.push(warning);
+            }
           }
         }
       }

@@ -15,7 +15,7 @@ import { getCustomers, saveBill, saveCustomer, getItems, saveItem } from "@/lib/
 import { generateBillPDF } from "@/lib/pdf";
 import { Customer, BillItem } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { validateCustomerName, validateItemName, validateItemRate, validateItemQuantity, validateBillDate, validateForm } from "@/lib/validation";
+import { validateCustomerName, validateItemName, validateItemRate, validateItemQuantity, validateBillDate, validateForm, ValidationResult } from "@/lib/validation";
 
 interface CreateBillProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -268,8 +268,8 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
 
   const handleSave = async () => {
     // Validate form data
-    const validations = [
-      selectedCustomer ? { isValid: true } : { isValid: false, error: 'Customer is required' },
+    const validations: ValidationResult[] = [
+      selectedCustomer ? { isValid: true, errors: [] } : { isValid: false, errors: ['Customer is required'] },
       validateBillDate(date)
     ];
 
@@ -281,8 +281,8 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     if (hasCurrentItem) {
       validations.push(
         validateItemName(itemName),
-        validateItemQuantity(quantity?.toString() || ''),
-        validateItemRate(rate?.toString() || '')
+        validateItemQuantity(quantity),
+        validateItemRate(rate)
       );
     }
 
@@ -291,8 +291,8 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       items.forEach((item) => {
         validations.push(
           validateItemName(item.itemName),
-          validateItemQuantity(item.quantity.toString()),
-          validateItemRate(item.rate.toString())
+          validateItemQuantity(item.quantity),
+          validateItemRate(item.rate)
         );
       });
     } else if (!hasCurrentItem) {
