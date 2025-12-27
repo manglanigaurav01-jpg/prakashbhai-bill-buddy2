@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Bill, CustomerBalance } from '@/types';
 import { Filesystem } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { saveFileToCustomerFolder } from './filesystem-utils';
 
 // Constants for Filesystem
 const FILESYSTEM_DIR = 'CACHE' as const;
@@ -165,26 +166,49 @@ export const generateCustomerSummaryPDF = async (customerId: string) => {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: FILESYSTEM_DIR,
-      });
+      // Save PDF to customer's folder
+      const saveResult = await saveFileToCustomerFolder(balance.customerName, fileName, base64Data);
 
+      if (!saveResult.success) {
+        console.error('Failed to save PDF to customer folder:', saveResult.error);
+        // Fallback to CACHE directory
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: 'CACHE',
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: 'CACHE',
+          path: fileName
+        });
+
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Customer Summary PDF',
+          text: 'Summary generated successfully (saved to cache)',
+          url: fileUri.uri,
+          dialogTitle: 'Save or Share PDF'
+        });
+
+        return { success: true, message: 'PDF saved to cache - choose where to save it!' };
+      }
+
+      // Get URI for sharing
       const fileUri = await Filesystem.getUri({
-        directory: FILESYSTEM_DIR,
-        path: fileName
+        directory: 'DOCUMENTS',
+        path: `${saveResult.folderPath}/${fileName}`
       });
 
       const { Share } = await import('@capacitor/share');
       await Share.share({
-        title: 'Bill PDF',
-        text: 'Bill generated successfully',
+        title: 'Customer Summary PDF',
+        text: 'Summary generated successfully',
         url: fileUri.uri,
         dialogTitle: 'Save or Share PDF'
       });
 
-      return { success: true, message: 'Bill downloaded successfully' };
+      return { success: true, message: 'PDF saved to customer folder!' };
     } else {
       doc.save(fileName);
       return { success: true, message: 'Summary downloaded successfully' };
@@ -306,26 +330,49 @@ export const generateBillPDF = async (bill: Bill) => {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: 'CACHE',
-      });
+      // Save PDF to customer's folder
+      const saveResult = await saveFileToCustomerFolder(bill.customerName, fileName, base64Data);
 
+      if (!saveResult.success) {
+        console.error('Failed to save PDF to customer folder:', saveResult.error);
+        // Fallback to CACHE directory
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: 'CACHE',
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: 'CACHE',
+          path: fileName
+        });
+
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Bill PDF',
+          text: 'Bill generated successfully (saved to cache)',
+          url: fileUri.uri,
+          dialogTitle: 'Save or Share PDF'
+        });
+
+        return { success: true, message: 'PDF saved to cache - choose where to save it!' };
+      }
+
+      // Get URI for sharing
       const fileUri = await Filesystem.getUri({
-        directory: 'CACHE',
-        path: fileName
+        directory: 'DOCUMENTS',
+        path: `${saveResult.folderPath}/${fileName}`
       });
 
       const { Share } = await import('@capacitor/share');
       await Share.share({
-        title: 'Customer Summary PDF',
-        text: 'Customer summary generated successfully',
+        title: 'Bill PDF',
+        text: 'Bill generated successfully',
         url: fileUri.uri,
         dialogTitle: 'Save or Share PDF'
       });
 
-      return { success: true, message: 'PDF ready - choose where to save it!' };
+      return { success: true, message: 'PDF saved to customer folder!' };
     } else {
       doc.save(fileName);
       return { success: true, message: 'Bill downloaded successfully' };

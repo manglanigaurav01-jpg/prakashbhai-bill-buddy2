@@ -1,44 +1,27 @@
-# Redesign Create Bill UI for Better Usability
+# Folder Structure Implementation for Mobile Local Storage
 
-## Current State Analysis
-- EnhancedCreateBill.tsx is already in use (more modular than old CreateBill.tsx)
-- Uses CustomerSelector, BillForm, ItemSelector, DiscountSection components
-- Has basic customer selection, item management, and discount functionality
+## Completed Tasks
+- [x] Create `src/lib/filesystem-utils.ts` with folder management functions
+- [x] Update `src/lib/pdf.ts` to save bill PDFs in customer-specific folders
+- [x] Update `src/lib/pdf.ts` to save customer summary PDFs in customer-specific folders
+- [x] Fix TypeScript errors in filesystem utilities
 
-## Planned Improvements
+## Pending Tasks
+- [ ] Test folder creation on mobile device
+- [ ] Verify PDF saving in correct customer folders
+- [ ] Handle filesystem permission errors gracefully
+- [ ] Update bill creation flow to ensure customer folders are created when needed (if not already handled)
+- [ ] Test fallback to CACHE directory when customer folder creation fails
 
-### Phase 1: Visual Design & Layout
-- [ ] Improve visual hierarchy with better spacing and sections
-- [ ] Add progressive disclosure (expandable sections)
-- [ ] Better mobile responsiveness
-- [ ] Add icons and visual cues throughout the UI
+## Implementation Details
+- Customer names are sanitized (special chars removed, spaces to underscores, max 50 chars)
+- PDFs are saved in DOCUMENTS directory under customer name folders
+- Fallback to CACHE directory if customer folder creation fails
+- Uses Capacitor Filesystem API for mobile operations
 
-### Phase 2: Enhanced Item Management
-- [ ] Improve ItemSelector with better search and suggestions
-- [ ] Add inline editing capabilities for items
-- [ ] Implement drag-and-drop for item reordering
-- [ ] Add quick-add buttons for frequently used items
-
-### Phase 3: User Experience Enhancements
-- [ ] Add real-time validation with helpful error messages
-- [ ] Implement auto-save for drafts
-- [ ] Add keyboard shortcuts (Ctrl+S to save, Ctrl+N for new item)
-- [ ] Create quick actions toolbar
-
-### Phase 4: Accessibility & Polish
-- [ ] Improve ARIA labels and keyboard navigation
-- [ ] Add screen reader support
-- [ ] Performance optimization for large item lists
-- [ ] Add loading states and progress indicators
-
-## Files to Modify
-- src/components/EnhancedCreateBill.tsx
-- src/components/EnhancedCreateBill/BillForm.tsx
-- src/components/EnhancedCreateBill/ItemSelector.tsx
-- src/components/EnhancedCreateBill/CustomerSelector.tsx (minor improvements)
-
-## Testing Requirements
-- [ ] Test on different screen sizes (mobile, tablet, desktop)
-- [ ] Validate accessibility with screen readers
-- [ ] Test keyboard navigation
-- [ ] Performance test with 50+ items
+## Testing Checklist
+- [ ] Create a bill and verify PDF saves in customer folder
+- [ ] Generate customer summary and verify PDF saves in customer folder
+- [ ] Test with special characters in customer names
+- [ ] Test fallback behavior when filesystem access fails
+- [ ] Verify sharing functionality works with saved PDFs
