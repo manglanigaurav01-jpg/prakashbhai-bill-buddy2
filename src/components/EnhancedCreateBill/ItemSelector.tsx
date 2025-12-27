@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BillItem } from '@/types';
 import { getItems, saveItem } from '@/lib/storage';
-import { validateItemInput } from '@/lib/security';
+import { validateItemName } from '@/lib/validation';
 import { toast } from "@/hooks/use-toast";
 
 interface ItemSelectorProps {
@@ -45,11 +45,11 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
       return;
     }
 
-    const validation = validateItemInput(searchQuery.trim());
+    const validation = validateItemName(searchQuery.trim());
     if (!validation.isValid) {
       toast({
         title: "Error",
-        description: validation.error,
+        description: validation.errors[0],
         variant: "destructive"
       });
       return;

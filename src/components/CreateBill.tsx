@@ -234,7 +234,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     if (!validation.isValid) {
       toast({
         title: "Invalid Customer Name",
-        description: validation.error,
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;

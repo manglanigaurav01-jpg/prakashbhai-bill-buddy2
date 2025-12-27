@@ -34,7 +34,7 @@ describe('Validation Functions', () => {
     it('should return invalid for null value', () => {
       const result = validateRequired(null, 'Field');
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('required');
+      expect(result.errors).toContain('Field is required');
     });
 
     it('should return invalid for undefined value', () => {
