@@ -257,29 +257,41 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-soft via-background to-accent-soft p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Enhanced Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 md:p-6 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Modern Header */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-12 gap-6">
+          <div className="flex items-center gap-6 animate-fade-in">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onNavigate('dashboard')}
-              className="rounded-full hover:bg-primary/10"
+              className="rounded-full hover:bg-primary/10 hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient-x">
                 Settings
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">Manage your app preferences and data</p>
+              <p className="text-lg text-muted-foreground flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                Manage your app preferences and data
+              </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-card/50 backdrop-blur-sm rounded-full border">
-            <SettingsIcon className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Configuration</span>
+          <div className="flex items-center gap-3 px-6 py-3 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <div className="p-2 bg-primary/10 rounded-xl">
+              <SettingsIcon className="w-5 h-5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Configuration Center
+            </span>
           </div>
         </div>
 

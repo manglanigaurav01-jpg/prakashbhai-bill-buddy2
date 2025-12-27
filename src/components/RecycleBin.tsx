@@ -86,34 +86,65 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-soft to-accent-soft p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center gap-4 mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onNavigate('settings')}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Settings
-          </Button>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 md:p-6 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Modern Header */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-12 gap-6">
+          <div className="flex items-center gap-6 animate-fade-in">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onNavigate('settings')}
+              className="rounded-full hover:bg-primary/10 hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient-x">
+                Recycle Bin
+              </h1>
+              <p className="text-lg text-muted-foreground flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                Recover deleted items before permanent deletion
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-6 py-3 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <div className="p-2 bg-destructive/10 rounded-xl">
+              <Trash2 className="w-5 h-5 text-destructive" />
+            </div>
+            <span className="text-sm font-semibold bg-gradient-to-r from-destructive to-destructive bg-clip-text text-transparent">
+              Recovery Center
+            </span>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
+        <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-4">
             <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-destructive/20 text-destructive">
                   <Trash2 className="h-5 w-5" />
-                  Recycle Bin
-                </CardTitle>
-                <CardDescription>
-                  Deleted items are kept for 30 days before permanent deletion
-                </CardDescription>
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Deleted Items</CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Items are kept for 30 days before permanent deletion
+                  </CardDescription>
+                </div>
               </div>
               {recycleBin.length > 0 && (
-                <Button variant="destructive" onClick={() => setConfirmClearAll(true)}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setConfirmClearAll(true)}
+                  className="hover:scale-105 transition-all duration-300"
+                >
                   Clear All
                 </Button>
               )}
@@ -175,9 +206,9 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
 
-      <AlertDialog open={confirmClearAll} onOpenChange={setConfirmClearAll}>
+        <AlertDialog open={confirmClearAll} onOpenChange={setConfirmClearAll}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Clear Recycle Bin?</AlertDialogTitle>
