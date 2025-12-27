@@ -11,13 +11,11 @@ import { toast } from "@/hooks/use-toast";
 interface CustomerSelectorProps {
   selectedCustomer: Customer | null;
   onCustomerSelect: (customer: Customer | null) => void;
-  onAddNew: () => void;
 }
 
 export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   selectedCustomer,
-  onCustomerSelect,
-  onAddNew
+  onCustomerSelect
 }): JSX.Element => {
   const [customers] = useState<Customer[]>(() => getCustomers());
   const [open, setOpen] = useState(false);

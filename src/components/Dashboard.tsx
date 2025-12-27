@@ -1,6 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Users, Calculator, CreditCard, TrendingUp, Package, Settings as SettingsIcon, Edit3, Sun, Moon, BarChart, Search } from "lucide-react";
+import { FileText, Users, Calculator, CreditCard, TrendingUp, Package, Settings as SettingsIcon, Edit3, Sun, Moon, BarChart, Search, RecycleIcon } from "lucide-react";
 import { useState } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useTheme } from "@/lib/theme-manager";
@@ -9,27 +9,125 @@ interface DashboardProps {
   onNavigate: (view: string) => void;
 }
 
+interface MenuItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  hoverColor: string;
+}
+
+const menuItems: MenuItem[] = [
+  {
+    id: 'createBill',
+    title: 'Create a Bill',
+    description: 'Generate new invoices',
+    icon: FileText,
+    color: 'bg-blue-50 border-blue-200 text-blue-700',
+    hoverColor: 'hover:bg-blue-100 hover:border-blue-300'
+  },
+  {
+    id: 'amountTracker',
+    title: 'Amount Tracker',
+    description: 'Track payments & dues',
+    icon: Calculator,
+    color: 'bg-green-50 border-green-200 text-green-700',
+    hoverColor: 'hover:bg-green-100 hover:border-green-300'
+  },
+  {
+    id: 'lastBalance',
+    title: 'Last Balance',
+    description: 'View recent balances',
+    icon: CreditCard,
+    color: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+    hoverColor: 'hover:bg-yellow-100 hover:border-yellow-300'
+  },
+  {
+    id: 'balanceHistory',
+    title: 'Balance History',
+    description: 'Historical balance data',
+    icon: BarChart,
+    color: 'bg-purple-50 border-purple-200 text-purple-700',
+    hoverColor: 'hover:bg-purple-100 hover:border-purple-300'
+  },
+  {
+    id: 'totalBusiness',
+    title: 'Total Business',
+    description: 'Business overview',
+    icon: TrendingUp,
+    color: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+    hoverColor: 'hover:bg-indigo-100 hover:border-indigo-300'
+  },
+  {
+    id: 'itemMaster',
+    title: 'Item Master',
+    description: 'Manage items',
+    icon: Package,
+    color: 'bg-orange-50 border-orange-200 text-orange-700',
+    hoverColor: 'hover:bg-orange-100 hover:border-orange-300'
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics',
+    description: 'Data insights',
+    icon: BarChart,
+    color: 'bg-teal-50 border-teal-200 text-teal-700',
+    hoverColor: 'hover:bg-teal-100 hover:border-teal-300'
+  },
+  {
+    id: 'customers',
+    title: 'Customers',
+    description: 'Customer management',
+    icon: Users,
+    color: 'bg-cyan-50 border-cyan-200 text-cyan-700',
+    hoverColor: 'hover:bg-cyan-100 hover:border-cyan-300'
+  },
+  {
+    id: 'editBills',
+    title: 'Edit Bills',
+    description: 'Modify existing bills',
+    icon: Edit3,
+    color: 'bg-pink-50 border-pink-200 text-pink-700',
+    hoverColor: 'hover:bg-pink-100 hover:border-pink-300'
+  },
+  {
+    id: 'editPayments',
+    title: 'Edit Payments',
+    description: 'Update payment records',
+    icon: CreditCard,
+    color: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    hoverColor: 'hover:bg-emerald-100 hover:border-emerald-300'
+  },
+  {
+    id: 'recycleBin',
+    title: 'Recycle Bin',
+    description: 'Deleted items',
+    icon: RecycleIcon,
+    color: 'bg-gray-50 border-gray-200 text-gray-700',
+    hoverColor: 'hover:bg-gray-100 hover:border-gray-300'
+  }
+];
+
 export const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { effectiveTheme, toggleTheme } = useTheme();
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const isDarkMode = effectiveTheme === 'dark';
 
-  // Menu items are defined inline in the JSX below
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-soft to-accent-soft p-8">
-      <div className="max-w-lg mx-auto">
-        <div className="flex justify-between items-start mb-8">
-          <div className="text-center flex-1">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Prakashbhai</h1>
-            <p className="text-business-gray text-lg">Bill Manager</p>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl font-bold text-foreground mb-2">Prakashbhai</h1>
+            <p className="text-muted-foreground text-xl">Bill Manager</p>
           </div>
-          <div className="flex gap-2 ml-4">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowGlobalSearch(true)}
-              className="transition-all duration-200 hover:scale-105"
+              className="modern-button"
             >
               <Search className="w-4 h-4" />
             </Button>
@@ -37,7 +135,7 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
               variant="outline"
               size="sm"
               onClick={toggleTheme}
-              className="transition-all duration-200 hover:scale-105"
+              className="modern-button"
             >
               {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
@@ -45,124 +143,44 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
               variant="outline"
               size="sm"
               onClick={() => onNavigate('settings')}
+              className="modern-button"
             >
               <SettingsIcon className="w-4 h-4 mr-2" />
               Settings
             </Button>
           </div>
         </div>
-        
-        <GlobalSearch 
-          open={showGlobalSearch} 
+
+        <GlobalSearch
+          open={showGlobalSearch}
           onOpenChange={setShowGlobalSearch}
           onNavigate={onNavigate}
         />
-        
-        <Card className="shadow-lg">
-          <CardContent className="p-8">
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('createBill')}
-              >
-                <FileText className="w-8 h-8" />
-                <span className="text-sm font-medium">Create a Bill</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-accent hover:text-accent-foreground transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('amountTracker')}
-              >
-                <Calculator className="w-8 h-8" />
-                <span className="text-sm font-medium">Amount Paid/Not Paid</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-warning hover:text-warning-foreground transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('lastBalance')}
-              >
-                <CreditCard className="w-8 h-8" />
-                <span className="text-sm font-medium">Last Balance</span>
-              </Button>
 
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-purple-500 hover:text-white transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('balanceHistory')}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {menuItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <Card
+                key={item.id}
+                className={`modern-card cursor-pointer ${item.color} ${item.hoverColor} transition-all duration-200`}
+                onClick={() => onNavigate(item.id)}
               >
-                <BarChart className="w-8 h-8" />
-                <span className="text-sm font-medium">L/B History</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-business-blue hover:text-primary-foreground transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('totalBusiness')}
-              >
-                <TrendingUp className="w-8 h-8" />
-                <span className="text-sm font-medium">Total Business</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-orange-500 hover:text-white transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('itemMaster')}
-              >
-                <Package className="w-8 h-8" />
-                <span className="text-sm font-medium">Item Master</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-indigo-500 hover:text-white transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('analytics')}
-              >
-                <BarChart className="w-8 h-8" />
-                <span className="text-sm font-medium">Analytics</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-business-blue hover:text-primary-foreground transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('customers')}
-              >
-                <Users className="w-8 h-8" />
-                <span className="text-sm font-medium">Customers</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-purple-500 hover:text-white transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('editBills')}
-              >
-                <Edit3 className="w-8 h-8" />
-                <span className="text-sm font-medium">Edit Bills</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-24 flex-col gap-3 hover:bg-emerald-500 hover:text-white transition-all duration-300 hover:scale-105"
-                onClick={() => onNavigate('editPayments')}
-              >
-                <CreditCard className="w-8 h-8" />
-                <span className="text-sm font-medium">Edit Amt Paid</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-white/50">
+                      <IconComponent className="w-6 h-6" />
+                    </div>
+                    <CardTitle className="text-lg font-semibold">{item.title}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm opacity-80">{item.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

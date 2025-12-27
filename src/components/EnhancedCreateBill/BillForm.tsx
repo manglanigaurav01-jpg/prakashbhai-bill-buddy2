@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -20,7 +20,6 @@ interface BillFormProps {
   isLoading: boolean;
   onBillDateChange: (date: Date) => void;
   onParticularsChange: (value: string) => void;
-  onItemNameChange: (index: number, value: string) => void;
   onQuantityChange: (index: number, value: string) => void;
   onRateChange: (index: number, value: string) => void;
   onItemSelect: (index: number, item: any) => void;
@@ -39,7 +38,6 @@ export const BillForm: React.FC<BillFormProps> = ({
   isLoading,
   onBillDateChange,
   onParticularsChange,
-  onItemNameChange,
   onQuantityChange,
   onRateChange,
   onItemSelect,
