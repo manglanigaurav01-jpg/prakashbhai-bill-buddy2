@@ -161,9 +161,37 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
 
     // Restore items and rate history (may be empty arrays for older backups)
-    if (backupData.items) {
-      localStorage.setItem('prakash_items', JSON.stringify(backupData.items));
-    }
+    let restoredItems = backupData.items || [];
+
+    // Extract items from bills and add them to item master if they don't exist
+    // This ensures that items referenced in bills are available in the item master
+    const itemsFromBills: ItemMaster[] = [];
+    const existingItemNames = new Set(restoredItems.map(item => item.name.toLowerCase()));
+
+    backupData.bills.forEach(bill => {
+      bill.items.forEach(billItem => {
+        const itemName = billItem.itemName.trim();
+        const itemNameLower = itemName.toLowerCase();
+
+        // If this item doesn't exist in the restored items, create it
+        if (!existingItemNames.has(itemNameLower)) {
+          const newItem: ItemMaster = {
+            id: `restored_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: itemName,
+            type: 'variable', // Default to variable since we don't know the pricing type
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          itemsFromBills.push(newItem);
+          existingItemNames.add(itemNameLower);
+        }
+      });
+    });
+
+    // Combine restored items with items extracted from bills
+    const allItems = [...restoredItems, ...itemsFromBills];
+    localStorage.setItem('prakash_items', JSON.stringify(allItems));
+
     if (backupData.itemRateHistory) {
       localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
     }
