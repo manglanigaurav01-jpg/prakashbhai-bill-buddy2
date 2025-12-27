@@ -157,7 +157,6 @@ export const savePayment = (payment: Omit<Payment, 'id' | 'createdAt'>): Payment
 };
 
 // Function to rebuild indexes if needed
-// @ts-expect-error - Intentionally unused, kept for future use
 const _ensureIndexes = () => {
   if (needsReindexing()) {
     buildIndexes(getBills(), getPayments(), getCustomers(), getItems());

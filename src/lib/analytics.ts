@@ -1,4 +1,3 @@
-// @ts-expect-error - Types are used in function signatures and type annotations
 import type { Bill, Payment, ItemUsage, Customer } from '@/types';
 import { getBills, getPayments, getCustomers, getItems } from './storage';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
