@@ -704,7 +704,7 @@ export function validateLargeAmount(
     }
   }
 
-  return { ...result, errors: result.errors.map(err => `${fieldName}: ${err}`) };
+  return basicValidation;
 }
 
 export function checkDataConsistency(data: any): { isConsistent: boolean, errors: string[] } {
