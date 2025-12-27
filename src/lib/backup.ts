@@ -1,8 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { getCustomers, getBills, getPayments, getAllCustomerBalances } from './storage';
-import { Customer, Bill, Payment, CustomerBalance } from '@/types';
+import { getCustomers, getBills, getPayments, getAllCustomerBalances, getItems, getRateHistory, getBusinessAnalytics } from './storage';
+import { getRecycleBin } from './recycle-bin';
+import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, BusinessAnalytics, RecycledItem } from '@/types';
 
 export interface BackupData {
   version: string;
@@ -11,6 +12,15 @@ export interface BackupData {
   bills: Bill[];
   payments: Payment[];
   lastBalances: CustomerBalance[];
+  items: ItemMaster[];
+  itemRateHistory: ItemRateHistory[];
+  businessAnalytics: BusinessAnalytics;
+  recycleBin: RecycledItem[];
+  dataVersion: string;
+  syncStatus?: any;
+  analysisCache?: any;
+  lastSync?: string;
+  syncConflicts?: any[];
 }
 
 export interface BackupResult {
@@ -25,6 +35,11 @@ export interface BackupResult {
  * 1. All customers with their complete bill history (including edited bills)
  * 2. All payments with dates and payment methods
  * 3. Last balance for all customers
+ * 4. All items from the item master
+ * 5. Item rate history
+ * 6. Business analytics data
+ * 7. Recycle bin data
+ * 8. Sync status and metadata
  */
 export const createBackup = async (): Promise<BackupResult> => {
   try {
@@ -33,14 +48,34 @@ export const createBackup = async (): Promise<BackupResult> => {
     const bills = getBills();
     const payments = getPayments();
     const lastBalances = getAllCustomerBalances();
+    const items = getItems();
+    const itemRateHistory = getRateHistory();
+    const businessAnalytics = getBusinessAnalytics();
+    const recycleBin = getRecycleBin();
+
+    // Gather additional metadata
+    const dataVersion = localStorage.getItem('prakash_data_version') || '1.0.0';
+    const syncStatus = localStorage.getItem('prakash_sync_status');
+    const analysisCache = localStorage.getItem('prakash_analysis_cache');
+    const lastSync = localStorage.getItem('prakash_last_sync');
+    const syncConflicts = localStorage.getItem('prakash_sync_conflicts');
 
     const backupData: BackupData = {
-      version: '2.0',
+      version: '3.0',
       createdAt: new Date().toISOString(),
       customers,
       bills,
       payments,
-      lastBalances
+      lastBalances,
+      items,
+      itemRateHistory,
+      businessAnalytics,
+      recycleBin,
+      dataVersion,
+      syncStatus: syncStatus ? JSON.parse(syncStatus) : undefined,
+      analysisCache: analysisCache ? JSON.parse(analysisCache) : undefined,
+      lastSync: lastSync || undefined,
+      syncConflicts: syncConflicts ? JSON.parse(syncConflicts) : undefined
     };
 
     // Convert to JSON
@@ -112,7 +147,7 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     const text = await file.text();
     const backupData: BackupData = JSON.parse(text);
 
-    // Validate backup structure
+    // Validate backup structure (support both old and new backup formats)
     if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
       throw new Error('Invalid backup file structure');
     }
@@ -124,6 +159,8 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     localStorage.setItem('prakash_customers', JSON.stringify(backupData.customers));
     localStorage.setItem('prakash_bills', JSON.stringify(backupData.bills));
     localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
+    localStorage.setItem('prakash_items', JSON.stringify(backupData.items));
+    localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
 
     // Note: lastBalances is computed from bills and payments, so we don't store it directly
 
@@ -167,6 +204,7 @@ export const getBackupInfo = (backupData: BackupData) => {
     customerCount: backupData.customers.length,
     billCount: backupData.bills.length,
     paymentCount: backupData.payments.length,
+    itemCount: backupData.items.length,
     totalRevenue: backupData.bills.reduce((sum, bill) => sum + bill.grandTotal, 0),
     totalPayments: backupData.payments.reduce((sum, payment) => sum + payment.amount, 0)
   };

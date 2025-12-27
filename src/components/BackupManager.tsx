@@ -53,7 +53,7 @@ export const BackupManager = () => {
         const text = await file.text();
         const backupData: BackupData = JSON.parse(text);
 
-        // Validate backup structure
+        // Validate backup structure (support both old and new backup formats)
         if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
           throw new Error('Invalid backup file structure');
         }
@@ -193,6 +193,10 @@ export const BackupManager = () => {
                   <p className="text-sm font-medium text-orange-600">Balances</p>
                   <p className="text-lg font-semibold">{previewData.lastBalances.length}</p>
                 </div>
+                <div className="bg-green-50 p-3 rounded">
+                  <p className="text-sm font-medium text-green-600">Items</p>
+                  <p className="text-lg font-semibold">{previewData.items?.length || 0}</p>
+                </div>
               </div>
 
               <div className="bg-yellow-50 p-4 rounded">
@@ -236,7 +240,8 @@ export const BackupManager = () => {
       <Alert>
         <AlertDescription>
           <strong>Backup includes:</strong> All customers, complete bill history (including edited bills),
-          all payments with dates and methods, and current balance information for all customers.
+          all payments with dates and methods, current balance information for all customers, all items from the item master,
+          business analytics data, recycle bin data, and sync metadata.
         </AlertDescription>
       </Alert>
     </div>

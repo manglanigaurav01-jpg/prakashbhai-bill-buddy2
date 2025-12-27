@@ -87,4 +87,33 @@ export interface ItemUsage {
   totalRevenue: number;
 }
 
+export interface BusinessAnalytics {
+  version: string;
+  lastUpdated: string;
+  salesTrends: {
+    monthly: { [key: string]: number };
+    seasonal: { [key: string]: number };
+  };
+  customerPatterns: {
+    paymentFrequency: { [customerId: string]: number };
+    averageBillAmount: { [customerId: string]: number };
+  };
+  popularItems: {
+    monthly: { [itemId: string]: number };
+    overall: { [itemId: string]: number };
+  };
+  cashFlow: {
+    predicted: { [key: string]: number };
+    actual: { [key: string]: number };
+  };
+}
+
+export interface RecycledItem {
+  id: string;
+  type: 'customer' | 'bill' | 'payment';
+  data: Customer | Bill | Payment;
+  deletedAt: string;
+  displayName: string;
+}
+
  
