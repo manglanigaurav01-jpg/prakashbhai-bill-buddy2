@@ -10,6 +10,7 @@ import { generateCustomerSummaryPDF } from "@/lib/pdf";
 import { shareViaWhatsApp, createPaymentReminderMessage } from "@/lib/whatsapp";
 import { Customer, CustomerBalance } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { Capacitor } from '@capacitor/core'; // Added import
 
 interface BalanceTrackerProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;

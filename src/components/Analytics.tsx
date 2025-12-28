@@ -5,12 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getBills, getPayments, getAllCustomerBalances } from '@/lib/storage';
 import { utils } from 'xlsx';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem'; // Keep Directory imported
+import { Share } from '@capacitor/share';
+import { useToast } from '@/hooks/use-toast';
 
 interface AnalyticsData {
   revenues: { date: string; amount: number }[];
   topItems: { name: string; quantity: number; revenue: number }[];
   customerPatterns: { customer: string; totalAmount: number; billCount: number; paymentFrequency: number }[];
-  outstandingPayments: { customer: string; amount: number; daysOverdue: number }[];
+  outstandingPayments: { customer: string; amount: number; daysOverdue: number; }[];
   seasonalTrends: { month: string; currentYear: number; previousYear: number }[];
 }
 
@@ -22,6 +26,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast(); // Moved toast hook call here
 
   const calculateAnalytics = useCallback(async () => {
     setLoading(true);
@@ -181,12 +186,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
                 await Filesystem.writeFile({
                   path: fileName,
                   data: cleanBase64,
-                  directory: Directory.Documents,
-                  recursive: true // Ensure directories exist
+                  directory: 'DOCUMENTS' as Directory, // Using string literal with type assertion
                 });
 
                 const fileUri = await Filesystem.getUri({
-                  directory: Directory.Documents,
+                  directory: 'DOCUMENTS' as Directory, // Using string literal with type assertion
                   path: fileName
                 });
 
