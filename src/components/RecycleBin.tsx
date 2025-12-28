@@ -29,7 +29,7 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
 
   useEffect(() => {
     loadRecycleBin();
-  }, []);
+  }, [loadRecycleBin]);
 
   const handleRestore = (itemId: string) => {
     const success = restoreFromRecycleBin(itemId);

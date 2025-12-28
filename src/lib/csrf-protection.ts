@@ -321,7 +321,7 @@ export class CSRFProtection {
    * Middleware function for request validation
    */
   public static createMiddleware() {
-    return async (request: any, response: any, next: Function) => {
+    return async (request: any, response: any, next: () => void) => {
       try {
         // Get session ID from request (this would depend on your session management)
         const sessionId = request.session?.id || 'anonymous';

@@ -73,7 +73,7 @@ export function sanitizePhoneNumber(phone: string): string {
     // Remove HTML and scripts first
     .replace(/<[^>]*>/g, '')
     // Allow only digits, spaces, hyphens, parentheses, and plus
-    .replace(/[^0-9\s\-\(\)\+]/g, '')
+    .replace(/[^0-9\s-()+]/g, '')
     // Remove multiple spaces
     .replace(/\s+/g, ' ')
     // Trim whitespace
@@ -156,7 +156,7 @@ export function detectInjection(input: string): boolean {
     // File system traversal
     /(\.\.|\/etc\/|\/bin\/|\/usr\/)/i,
     // Command injection
-    /(\||&|;|\$\(|\`)/i
+    /(\||&|;|\$\(|`)/i
   ];
 
   return injectionPatterns.some(pattern => pattern.test(input));
@@ -279,7 +279,7 @@ export function validateAndSanitize(
 
   // Type-specific validation
   switch (options.fieldType) {
-    case 'email':
+    case 'email': {
       const sanitizedEmail = sanitizeEmail(input);
       if (!sanitizedEmail) {
         errors.push('Invalid email format');
@@ -287,10 +287,11 @@ export function validateAndSanitize(
         sanitizedValue = sanitizedEmail;
       }
       break;
+    }
 
     case 'phone':
       sanitizedValue = sanitizePhoneNumber(input);
-      if (sanitizedValue && !/^[\d\s\-\(\)\+]+$/.test(sanitizedValue)) {
+      if (sanitizedValue && !/^[\d\s-()+]+$/.test(sanitizedValue)) {
         errors.push('Invalid phone number format');
       }
       break;
@@ -299,13 +300,14 @@ export function validateAndSanitize(
       sanitizedValue = sanitizeCustomerName(input);
       break;
 
-    case 'number':
+    case 'number': {
       const numValue = sanitizeNumber(input);
       if (numValue === 0 && input !== '0') {
         errors.push('Invalid number format');
       }
       sanitizedValue = numValue.toString();
       break;
+    }
   }
 
   // Injection detection

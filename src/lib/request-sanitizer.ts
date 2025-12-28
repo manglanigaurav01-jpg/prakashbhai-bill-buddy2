@@ -176,7 +176,7 @@ export class RequestSanitizer {
     let cleanUrl = url;
 
     // Remove null bytes and other control characters
-    cleanUrl = cleanUrl.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    cleanUrl = cleanUrl.replace(/[\\x00-\\x1F\\x7F-\\x9F]/g, '');
 
     // Normalize path traversal attempts
     cleanUrl = cleanUrl.replace(/\.\./g, '');

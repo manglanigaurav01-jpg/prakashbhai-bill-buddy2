@@ -545,7 +545,7 @@ export class InputValidator {
         message = 'Must be a valid email address';
         break;
       case 'phone':
-        valid = typeof value === 'string' && /^[\d\s\-\(\)\+]+$/.test(value);
+        valid = typeof value === 'string' && /^[\d\s\-()+]+$/.test(value);
         message = 'Must be a valid phone number';
         break;
       case 'date':

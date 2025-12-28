@@ -30,7 +30,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
 
   useEffect(() => {
     calculateAnalytics();
-  }, [timeRange]);
+  }, [timeRange, calculateAnalytics]);
 
   const calculateAnalytics = async () => {
     setLoading(true);
