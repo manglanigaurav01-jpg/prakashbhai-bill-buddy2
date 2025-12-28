@@ -7,7 +7,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, Search, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Search, Plus, Share } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Customer, MonthlyBalance } from "@/types";
 import { getCustomers, saveCustomer } from "@/lib/storage";
@@ -190,6 +190,42 @@ export const BalanceHistory = ({ onNavigate }: BalanceHistoryProps) => {
     }
   };
 
+  const handleForceShareMonthlyPDF = async () => {
+    if (!selectedCustomer || !selectedBalance) {
+      toast({
+        title: "Error",
+        description: "Please select a customer and month",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const customer = customers.find(c => c.id === selectedCustomer);
+    if (!customer) return;
+
+    try {
+      await generateMonthlyBalancePDF(
+        selectedCustomer,
+        customer.name,
+        selectedBalance.month,
+        selectedBalance.year,
+        true // forceShare
+      );
+      hapticSuccess();
+      toast({
+        title: "PDF Shared",
+        description: `Balance PDF for ${getMonthLabel(selectedMonth)} has been shared successfully`,
+      });
+    } catch (error) {
+      hapticError();
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to share PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -241,10 +277,16 @@ export const BalanceHistory = ({ onNavigate }: BalanceHistoryProps) => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{customers.find(c => c.id === selectedCustomer)?.name} - {getMonthLabel(selectedMonth)}</CardTitle>
-                <Button onClick={handleGeneratePDF} className="gap-2">
-                  <FileText className="w-4 h-4" />
-                  Generate PDF
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleGeneratePDF} className="gap-2">
+                    <FileText className="w-4 h-4" />
+                    Generate PDF
+                  </Button>
+                  <Button onClick={handleForceShareMonthlyPDF} className="gap-2">
+                    <Share className="w-4 h-4" />
+                    Share PDF Directly
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

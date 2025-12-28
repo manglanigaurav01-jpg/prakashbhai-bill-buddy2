@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, FileText, User, Package, Calculator, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, FileText, User, Package, Calculator, CheckCircle, AlertCircle, Share } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -266,6 +266,81 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
     }
   };
 
+  const saveBillAndForceSharePDF = async () => {
+    if (!validateBill()) return;
+
+    const dateValidation = validateBillDateWithFutureWarning(billDate);
+    if (dateValidation.warning) {
+      toast({
+        title: "Date Warning",
+        description: dateValidation.warning,
+        variant: "default",
+      });
+      hapticWarning();
+    }
+
+    // Validate amount with large amount warning
+    const allBills = getBills();
+    const billAmounts = allBills.map(b => b.grandTotal);
+    const grandTotal = calculateGrandTotal();
+    const amountValidation = validateLargeAmount(grandTotal, 'bill', { bills: billAmounts });
+    if (amountValidation.warning) {
+      toast({
+        title: "Amount Warning",
+        description: amountValidation.warning,
+        variant: "default",
+      });
+      hapticWarning();
+    }
+
+    setIsLoading(true);
+    try {
+      const discountValue = parseFloat(discount) || 0;
+      const billData = {
+        customerId: selectedCustomer!.id,
+        customerName: selectedCustomer!.name,
+        date: billDate.toISOString().split('T')[0],
+        particulars,
+        items: billItems,
+        ...(discountValue > 0 && { discount: discountValue, discountType }),
+        grandTotal: calculateGrandTotal(),
+      };
+
+      const savedBill = saveBill(billData);
+      const result = await generateBillPDF(savedBill, true); // Force share
+
+      if (result.success) {
+        hapticSuccess();
+        toast({
+          title: "Success",
+          description: result.message
+        });
+
+        // Reset form
+        setSelectedCustomer(null);
+        setBillDate(new Date());
+        setParticulars('');
+        setBillItems([{ id: '1', itemName: '', quantity: 0, rate: 0, total: 0 }]);
+        setDiscount('');
+        setDiscountType('percentage');
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF for sharing. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -475,6 +550,16 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
               >
                 <FileText className="w-4 h-4 mr-2" />
                 {isLoading ? 'Generating...' : 'Save as PDF'}
+              </Button>
+              <Button
+                onClick={saveBillAndForceSharePDF}
+                disabled={isLoading || !selectedCustomer || !billItems.some(item => item.itemName && item.quantity > 0 && item.rate > 0)}
+                variant="outline"
+                className="flex-1"
+                size="lg"
+              >
+                <Share className="w-4 h-4 mr-2" />
+                {isLoading ? 'Sharing...' : 'Share PDF Directly'}
               </Button>
             </div>
           </CardContent>

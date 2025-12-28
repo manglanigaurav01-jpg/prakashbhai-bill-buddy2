@@ -82,9 +82,9 @@ export const saveFileToCustomerFolder = async (
     });
 
     return { success: true, uri: result.uri, folderPath: sanitizedName };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving file to customer folder:', error);
-    return { success: false, error: 'Failed to save file' };
+    return { success: false, error: `Failed to save file: ${error.message || error}` };
   }
 };
 

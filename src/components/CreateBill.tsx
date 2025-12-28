@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { ArrowLeft, Plus, Trash2, FileDown, Save, Edit3, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, Save, Edit3, Search, Share } from "lucide-react";
 import { getCustomers, saveBill, saveCustomer, getItems, saveItem } from "@/lib/storage";
 import { generateBillPDF } from "@/lib/pdf";
 import { Customer, BillItem } from "@/types";
@@ -454,6 +454,92 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
     }
   };
 
+  const handleForceSharePDF = async () => {
+    if (!selectedCustomer) {
+      toast({
+        title: "No Customer Selected",
+        description: "Please select a customer first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hasTableItems = items.length > 0;
+    const hasCurrentItem = itemName && quantity && quantity > 0 && rate && rate > 0;
+    
+    if (!hasTableItems && !hasCurrentItem) {
+      toast({
+        title: "No Items to Share",
+        description: "Please add at least one item or fill the current item fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedCustomer) return;
+
+    setIsGeneratingPDF(true);
+    setPdfProgress(0);
+
+    try {
+      const progressSteps = [20, 40, 60, 80, 100];
+      for (let i = 0; i < progressSteps.length; i++) {
+        setPdfProgress(progressSteps[i]);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      let itemsToSave = [...items];
+      if (hasCurrentItem && !hasTableItems) {
+        const currentItem: BillItem = {
+          id: Date.now().toString(),
+          itemName,
+          quantity,
+          rate,
+          total: currentItemTotal,
+        };
+        itemsToSave = [currentItem];
+      }
+
+      const bill = saveBill({
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.name,
+        date: date.toISOString().split('T')[0],
+        particulars,
+        items: itemsToSave,
+        grandTotal: itemsToSave.reduce((sum, item) => sum + item.total, 0),
+      });
+
+      const pdfResult = await generateBillPDF(bill, true); // Force share
+
+      if (pdfResult.success) {
+        toast({
+          title: "✅ PDF Shared Successfully!",
+          description: pdfResult.message,
+          className: "animate-pulse-success",
+        });
+
+        // Optionally clear form after successful share, depending on UX
+        // handleClear(); 
+      } else {
+        toast({
+          title: "Error Sharing PDF",
+          description: pdfResult.message,
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      toast({
+        title: "Error Generating PDF for Sharing",
+        description: "Please try again or contact support",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfProgress(0);
+    }
+  };
+
   const handleClear = () => {
     setSelectedCustomer(null);
     setDate(new Date());
@@ -740,6 +826,18 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
                      <FileDown className="w-4 h-4 mr-2" />
                    )}
                    {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
+                 </Button>
+                 <Button 
+                   onClick={handleForceSharePDF} 
+                   disabled={(!items.length && !currentItemTotal) || !selectedCustomer || isGeneratingPDF}
+                   className="min-h-[44px] touch-manipulation"
+                 >
+                   {isGeneratingPDF ? (
+                     <LoadingSpinner size="sm" className="mr-2" />
+                   ) : (
+                     <Share className="w-4 h-4 mr-2" />
+                   )}
+                   {isGeneratingPDF ? 'Sharing...' : 'Share PDF Directly'}
                  </Button>
                </div>
             </div>

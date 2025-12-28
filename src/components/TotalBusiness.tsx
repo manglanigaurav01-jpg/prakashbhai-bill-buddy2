@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, TrendingUp, ChevronDown, Download } from "lucide-react";
+import { ArrowLeft, TrendingUp, ChevronDown, Download, Share } from "lucide-react";
 import { getAllCustomerBalances } from "@/lib/storage";
 import { CustomerBalance } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +83,54 @@ export const TotalBusiness = ({ onNavigate }: TotalBusinessProps) => {
     }
   };
 
+  const handleForceSharePendingPDF = async () => {
+    try {
+      const result = await generatePendingPDF(pendingCustomers, businessSummary.totalPending, true); // Force share
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to share pending amounts report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleForceShareAdvancePDF = async () => {
+    try {
+      const result = await generateAdvancePDF(advanceCustomers, businessSummary.totalAdvance, true); // Force share
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to share advance amounts report.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto">
@@ -144,6 +192,17 @@ export const TotalBusiness = ({ onNavigate }: TotalBusinessProps) => {
                       >
                         <Download className="w-4 h-4" />
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleForceSharePendingPDF();
+                        }}
+                        disabled={pendingCustomers.length === 0}
+                      >
+                        <Share className="w-4 h-4" />
+                      </Button>
                       <ChevronDown className={`w-4 h-4 transition-transform ${pendingOpen ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
@@ -181,19 +240,29 @@ export const TotalBusiness = ({ onNavigate }: TotalBusinessProps) => {
                         <div className="text-xl font-bold text-accent">₹{businessSummary.totalAdvance.toFixed(2)}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleGenerateAdvancePDF();
-                          }}
-                          disabled={advanceCustomers.length === 0}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${advanceOpen ? 'rotate-180' : ''}`} />
-                      </div>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleGenerateAdvancePDF();
+                                                }}
+                                                disabled={advanceCustomers.length === 0}
+                                              >
+                                                <Download className="w-4 h-4" />
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleForceShareAdvancePDF();
+                                                }}
+                                                disabled={advanceCustomers.length === 0}
+                                              >
+                                                <Share className="w-4 h-4" />
+                                              </Button>
+                                              <ChevronDown className={`w-4 h-4 transition-transform ${advanceOpen ? 'rotate-180' : ''}`} />                      </div>
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>

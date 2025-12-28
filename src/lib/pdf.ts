@@ -39,7 +39,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return btoa(binary);
 };
 
-export const generateCustomerSummaryPDF = async (customerId: string) => {
+export const generateCustomerSummaryPDF = async (customerId: string, forceShare: boolean = false) => {
   const { getBillsByCustomer, getCustomerBalance, getPayments } = await import('@/lib/storage');
   const bills = getBillsByCustomer(customerId);
   const balance = getCustomerBalance(customerId);
@@ -165,32 +165,31 @@ export const generateCustomerSummaryPDF = async (customerId: string) => {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
+      if (forceShare) {
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Customer Summary PDF',
+          text: `Summary for ${balance.customerName}`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Customer Summary PDF'
+        });
+        return { success: true, message: 'Customer Summary PDF shared successfully!' };
+      }
+
       // Save PDF to customer's folder
       const saveResult = await saveFileToCustomerFolder(balance.customerName, fileName, base64Data);
 
       if (!saveResult.success) {
         console.error('Failed to save PDF to customer folder:', saveResult.error);
-        // Fallback to CACHE directory
-        await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: 'CACHE',
-        });
-
-        const fileUri = await Filesystem.getUri({
-          directory: 'CACHE',
-          path: fileName
-        });
-
+        // Fallback to force sharing if saving to customer folder fails
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Customer Summary PDF',
-          text: 'Summary generated successfully (saved to cache)',
-          url: fileUri.uri,
-          dialogTitle: 'Save or Share PDF'
+          text: `Summary for ${balance.customerName} (failed to save to folder)`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Customer Summary PDF'
         });
-
-        return { success: true, message: 'PDF saved to cache - choose where to save it!' };
+        return { success: true, message: 'Customer Summary PDF shared directly (failed to save to folder)!' };
       }
 
       // Get URI for sharing
@@ -218,7 +217,142 @@ export const generateCustomerSummaryPDF = async (customerId: string) => {
   }
 };
 
-export const generateBillPDF = async (bill: Bill) => {
+export const generateBillPDFForceShare = async (bill: Bill) => {
+  // Load custom PDF settings from localStorage
+  const savedSettings = localStorage.getItem('pdfSettings');
+  const settings = savedSettings ? JSON.parse(savedSettings) : {
+    headerColor: '#3449be',
+    textColor: '#000000',
+    companyName: 'Prakashbhai Bill Buddy',
+    tableHeaders: {
+      srNo: 'Sr No',
+      itemName: 'Item Name',
+      quantity: 'Quantity',
+      rate: 'Rate',
+      total: 'Total'
+    }
+  };
+
+  const doc = new jsPDF();
+
+  // Convert hex to RGB
+  const hexToRgb = (hex: string): [number, number, number] => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16)
+    ] : [52, 73, 190];
+  };
+
+  const headerRgb = hexToRgb(settings.headerColor);
+  const textRgb = hexToRgb(settings.textColor);
+
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
+  doc.text(settings.companyName, 20, 20);
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.text(bill.customerName, 20, 32);
+
+  doc.setFontSize(12);
+  doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 44);
+
+  if (bill.particulars) {
+    doc.setFontSize(10);
+    doc.text(`Particulars: ${bill.particulars}`, 20, 54);
+  }
+
+  const tableData = bill.items.map((item, index) => [
+    index + 1,
+    item.itemName,
+    item.quantity.toString(),
+    `Rs. ${item.rate.toFixed(2)}`,
+    `Rs. ${item.total.toFixed(2)}`
+  ]);
+
+  const subtotal = bill.items.reduce((sum, item) => sum + item.total, 0);
+
+  autoTable(doc, {
+    head: [[
+      settings.tableHeaders.srNo,
+      settings.tableHeaders.itemName,
+      settings.tableHeaders.quantity,
+      settings.tableHeaders.rate,
+      settings.tableHeaders.total
+    ]],
+    body: tableData,
+    startY: bill.particulars ? 64 : 54,
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3, textColor: textRgb },
+    headStyles: { fillColor: headerRgb, textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    tableLineWidth: 0.1,
+    showHead: 'everyPage',
+    pageBreak: 'auto',
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
+
+  if (bill.discount && bill.discount > 0) {
+    doc.setFontSize(10);
+    doc.text(`Subtotal: Rs. ${subtotal.toFixed(2)}`, 20, finalY);
+    finalY += 7;
+
+    const discountAmount = bill.discountType === 'percentage'
+      ? (subtotal * bill.discount / 100)
+      : bill.discount;
+    const discountLabel = bill.discountType === 'percentage'
+      ? `Discount (${bill.discount}%):`
+      : 'Discount:';
+    doc.text(`${discountLabel} -Rs. ${discountAmount.toFixed(2)}`, 20, finalY);
+    finalY += 10;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: Rs. ${bill.grandTotal.toFixed(2)}`, 20, finalY);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Thank you for your business!', 105, doc.internal.pageSize.height - 20, { align: 'center' });
+
+  const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
+
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const pdfOutput = doc.output('arraybuffer');
+      const base64Data = arrayBufferToBase64(pdfOutput);
+
+      // Force share directly without saving to filesystem
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: 'Bill PDF',
+        text: `Bill for ${bill.customerName} - ${formatDate(new Date(bill.date))}`,
+        url: `data:application/pdf;base64,${base64Data}`,
+        dialogTitle: 'Share Bill PDF'
+      });
+
+      return { success: true, message: 'PDF shared successfully!' };
+    } else {
+      doc.save(fileName);
+      return { success: true, message: 'Bill downloaded successfully' };
+    }
+  } catch (error) {
+    console.error('Error force sharing PDF:', error);
+    return { success: false, message: 'Failed to share PDF. Please try again.' };
+  }
+};
+
+export const generateBillPDF = async (bill: Bill, forceShare: boolean = false) => {
+  // If force share is requested, use the direct sharing method
+  if (forceShare) {
+    return await generateBillPDFForceShare(bill);
+  }
   // Load custom PDF settings from localStorage
   const savedSettings = localStorage.getItem('pdfSettings');
   const settings = savedSettings ? JSON.parse(savedSettings) : {
@@ -334,27 +468,8 @@ export const generateBillPDF = async (bill: Bill) => {
 
       if (!saveResult.success) {
         console.error('Failed to save PDF to customer folder:', saveResult.error);
-        // Fallback to CACHE directory
-        await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: 'CACHE',
-        });
-
-        const fileUri = await Filesystem.getUri({
-          directory: 'CACHE',
-          path: fileName
-        });
-
-        const { Share } = await import('@capacitor/share');
-        await Share.share({
-          title: 'Bill PDF',
-          text: 'Bill generated successfully (saved to cache)',
-          url: fileUri.uri,
-          dialogTitle: 'Save or Share PDF'
-        });
-
-        return { success: true, message: 'PDF saved to cache - choose where to save it!' };
+        // Fallback to force sharing if saving to customer folder fails
+        return await generateBillPDFForceShare(bill);
       }
 
       // Get URI for sharing
@@ -382,7 +497,7 @@ export const generateBillPDF = async (bill: Bill) => {
   }
 };
 
-export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], totalPending: number) => {
+export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], totalPending: number, forceShare: boolean = false) => {
   const doc = new jsPDF();
 
   doc.setFontSize(18);
@@ -420,6 +535,17 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
+      if (forceShare) {
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Pending Amounts Report',
+          text: `Pending amounts report generated on ${formatDate(new Date())}`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Pending Amounts Report'
+        });
+        return { success: true, message: 'Pending Amounts Report shared successfully!' };
+      }
+
       await Filesystem.writeFile({
         path: fileName,
         data: base64Data,
@@ -450,7 +576,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
   }
 };
 
-export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], totalAdvance: number) => {
+export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], totalAdvance: number, forceShare: boolean = false) => {
   const doc = new jsPDF();
 
   doc.setFontSize(18);
@@ -487,6 +613,17 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
+
+      if (forceShare) {
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Advance Amounts Report',
+          text: `Advance amounts report generated on ${formatDate(new Date())}`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Advance Amounts Report'
+        });
+        return { success: true, message: 'Advance Amounts Report shared successfully!' };
+      }
 
       await Filesystem.writeFile({
         path: fileName,
