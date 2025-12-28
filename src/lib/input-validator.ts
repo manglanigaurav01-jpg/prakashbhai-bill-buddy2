@@ -476,7 +476,7 @@ export class InputValidator {
       }
 
       // Enum validation
-      if (rule.enum && !rule.enum.includes(value)) {
+      if (rule.enum && !(rule.enum as any[]).includes(value as any)) {
         errors.push({
           field: fieldPath,
           value,
@@ -603,7 +603,7 @@ export class InputValidator {
         }
 
       if (rule.type === 'array' && Array.isArray(value) && rule.nestedSchema) {
-        value = value.map((item: any) => this.sanitizeData(item, rule.nestedSchema!));
+        value = value.map((item: any) => this.sanitizeData(item, rule.nestedSchema));
       }
 
         sanitized[field] = value;
