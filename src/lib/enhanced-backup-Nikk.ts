@@ -1,4 +1,4 @@
-import { Filesystem } from '@capacitor/filesystem';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Bill, Customer, Payment, ItemMaster, ItemRateHistory } from '@/types';
 import { 
   getCustomers, 
@@ -11,8 +11,7 @@ import {
 
 import { format } from 'date-fns';
 
-// Filesystem directory constant
-const DATA_DIR = 'DATA' as const;
+// Filesystem directory constant removed, using Directory.Cache
 const MAX_LOCAL_BACKUPS = 5;
 
 // Enhanced backup data structure
@@ -159,7 +158,7 @@ export const createEnhancedBackup = async () => {
     await Filesystem.writeFile({
       path: fileName,
       data: JSON.stringify(backup),
-      directory: DATA_DIR
+      directory: Directory.Cache
     });
 
     // Clean up old backups
@@ -185,7 +184,7 @@ export const restoreFromEnhancedBackup = async (backupFilePath: string) => {
   try {
     const { data: backupContent } = await Filesystem.readFile({
       path: backupFilePath,
-      directory: DATA_DIR
+      directory: Directory.Cache
     });
 
     const backup: EnhancedBackupData = JSON.parse(backupContent.toString());
@@ -227,7 +226,7 @@ const cleanupOldBackups = async () => {
   try {
     const result = await Filesystem.readdir({
       path: '',
-      directory: DATA_DIR
+      directory: Directory.Cache
     });
 
     // Sort backups by date (newest first)
@@ -239,7 +238,7 @@ const cleanupOldBackups = async () => {
     for (let i = MAX_LOCAL_BACKUPS; i < backups.length; i++) {
       await Filesystem.deleteFile({
         path: backups[i].name,
-        directory: DATA_DIR
+        directory: Directory.Cache
       });
     }
   } catch (error) {
@@ -252,7 +251,7 @@ export const listAvailableBackups = async () => {
   try {
     const result = await Filesystem.readdir({
       path: '',
-      directory: DATA_DIR
+      directory: Directory.Cache
     });
 
     const backups = await Promise.all(
@@ -262,7 +261,7 @@ export const listAvailableBackups = async () => {
           try {
             const { data } = await Filesystem.readFile({
               path: file.name,
-              directory: DATA_DIR
+              directory: Directory.Cache
             });
             const backup: EnhancedBackupData = JSON.parse(data.toString());
             return {

@@ -2,7 +2,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
 // Constants
-const CUSTOMER_FOLDER_DIR = 'DOCUMENTS' as Directory;
+const CUSTOMER_FOLDER_DIR = Directory.Cache;
 
 // Sanitize customer name for folder creation
 export const sanitizeCustomerName = (name: string): string => {

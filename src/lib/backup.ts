@@ -115,7 +115,7 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
         await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         // Share the file

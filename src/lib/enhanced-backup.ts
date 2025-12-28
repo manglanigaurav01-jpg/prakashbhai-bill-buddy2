@@ -11,8 +11,7 @@ import {
   getBusinessAnalytics
 } from './storage';
 
-// Filesystem directory constants
-const DATA_DIR = 'DATA';
+// Filesystem directory constants removed, using Directory.Cache
 import { format } from 'date-fns';
 
 // Web platform backup storage key prefix
@@ -215,20 +214,20 @@ export const createEnhancedBackup = async () => {
         await Filesystem.writeFile({
           path: uniqueFileName,
           data: base64Data,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
-        // Also save to DATA directory for internal listing/restore
+        // Also save to Cache directory for internal listing/restore
         await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
-          directory: DATA_DIR
+          directory: Directory.Cache
         });
 
         // Get file URI for sharing
         const fileInfo = await Filesystem.getUri({
           path: uniqueFileName,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         if (!fileInfo.uri) {
@@ -294,7 +293,7 @@ export const restoreFromEnhancedBackup = async (backupFilePath: string) => {
       // For mobile, use Filesystem API
       const { data } = await Filesystem.readFile({
         path: backupFilePath,
-        directory: DATA_DIR
+        directory: Directory.Cache
       });
       backupContent = data.toString();
     }
@@ -363,7 +362,7 @@ const cleanupOldBackups = async () => {
   try {
     const result = await Filesystem.readdir({
       path: '',
-      directory: DATA_DIR
+      directory: Directory.Cache
     });
 
     // Sort backups by date (newest first)
@@ -375,7 +374,7 @@ const cleanupOldBackups = async () => {
     for (let i = MAX_LOCAL_BACKUPS; i < backups.length; i++) {
       await Filesystem.deleteFile({
         path: backups[i].name,
-        directory: DATA_DIR
+        directory: Directory.Cache
       });
     }
   } catch (error) {
@@ -437,7 +436,7 @@ export const listAvailableBackups = async () => {
       // For mobile, use Filesystem API
       const result = await Filesystem.readdir({
         path: '',
-        directory: DATA_DIR
+        directory: Directory.Cache
       });
 
       const backups = await Promise.all(
@@ -447,13 +446,13 @@ export const listAvailableBackups = async () => {
             try {
               const { data } = await Filesystem.readFile({
                 path: file.name,
-                directory: DATA_DIR
+                directory: Directory.Cache
               });
               const backup: EnhancedBackupData = JSON.parse(data.toString());
               // Attempt to resolve a uri for this specific file; fall back to a blob URL
               let uri: string | undefined;
               try {
-                const info = await Filesystem.getUri({ path: file.name, directory: DATA_DIR });
+                const info = await Filesystem.getUri({ path: file.name, directory: Directory.Cache });
                 uri = (info && (info as any).uri) || (info as any).path || undefined;
               } catch (e) {
                 try {

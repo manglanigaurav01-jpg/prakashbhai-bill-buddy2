@@ -186,11 +186,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
                 await Filesystem.writeFile({
                   path: fileName,
                   data: cleanBase64,
-                  directory: 'DOCUMENTS' as Directory,
+                  directory: Directory.Cache,
                 });
 
                 const fileUri = await Filesystem.getUri({
-                  directory: 'DOCUMENTS' as Directory,
+                  directory: Directory.Cache,
                   path: fileName
                 });
 

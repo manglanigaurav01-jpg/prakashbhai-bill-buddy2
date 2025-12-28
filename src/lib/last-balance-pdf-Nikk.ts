@@ -140,17 +140,17 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
         const timestamp = new Date().getTime();
         const uniqueFileName = `last_balance_${timestamp}_${fileName}`;
         
-        // Save directly to Documents directory without creating subdirectory
+        // Save directly to Cache directory without creating subdirectory
         await Filesystem.writeFile({
           path: uniqueFileName,
           data: base64Data,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         // Get the complete file URI for sharing
         const fileInfo = await Filesystem.getUri({
           path: uniqueFileName,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         if (!fileInfo.uri) {
