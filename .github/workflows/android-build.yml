@@ -88,7 +88,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps --prefer-offline --no-audit --no-fund
       
-      - name: Install Capacitor plugins
+      - name: Install/Update Capacitor plugins
         run: |
           npm install @capacitor/share@latest
           npm install @capacitor/filesystem@latest
@@ -111,8 +111,26 @@ jobs:
             npx cap add android
           fi
       
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Sync Capacitor (CRITICAL for Share plugin fix)
+        run: |
+          echo "🔄 Syncing Capacitor plugins to Android..."
+          npx cap sync android
+          echo "✅ Capacitor sync completed"
+      
+      - name: Verify Share plugin is registered
+        run: |
+          echo "Checking if Share plugin is properly synced..."
+          if grep -q "capacitor-share" android/capacitor.settings.gradle; then
+            echo "✅ Share plugin found in capacitor.settings.gradle"
+          else
+            echo "❌ ERROR: Share plugin NOT found in capacitor.settings.gradle"
+            echo "This will cause 'Share plugin is not Implemented on android' error"
+            exit 1
+          fi
+          
+          if grep -q "com.capacitorjs.plugins.share" android/capacitor.settings.gradle; then
+            echo "✅ Share plugin package confirmed"
+          fi
       
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -169,6 +187,24 @@ jobs:
             ./gradlew assembleDebug --no-daemon --stacktrace
           fi
       
+      - name: Verify APK was created
+        run: |
+          if [ "${{ steps.build_type.outputs.type }}" == "debug" ]; then
+            if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+              echo "✅ Debug APK successfully built: $(ls -lh android/app/build/outputs/apk/debug/app-debug.apk)"
+            else
+              echo "❌ Debug APK not found"
+              exit 1
+            fi
+          else
+            if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+              echo "✅ Release APK successfully built: $(ls -lh android/app/build/outputs/apk/release/app-release.apk)"
+            else
+              echo "❌ Release APK not found"
+              exit 1
+            fi
+          fi
+      
       - name: Upload Debug APK artifact
         if: steps.build_type.outputs.type == 'debug'
         uses: actions/upload-artifact@v4
@@ -200,6 +236,7 @@ jobs:
           echo "- Node Version: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- Java Version: ${{ env.JAVA_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- Gradle Version: ${{ env.GRADLE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Share Plugin: Synced and Verified" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.build_type.outputs.type }}" == "debug" ]; then
@@ -208,3 +245,6 @@ jobs:
             echo "- Release APK: app-release-apk" >> $GITHUB_STEP_SUMMARY
             echo "- Release AAB: app-release-aab" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Share Plugin Fix" >> $GITHUB_STEP_SUMMARY
+          echo "The Share plugin has been properly synced to fix the 'Share plugin is not Implemented on android' error." >> $GITHUB_STEP_SUMMARY
