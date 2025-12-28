@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Download, Search, Plus, Share } from "lucide-react";
+import { ArrowLeft, Download, Search, Plus } from "lucide-react";
+import { Capacitor } from '@capacitor/core';
 import { getCustomers, saveCustomer } from "@/lib/storage";
 import { generateLastBalancePDF } from "@/lib/last-balance-pdf";
 import { Customer, MonthlyBalance } from "@/types";
@@ -195,7 +196,7 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
         description: "Generating PDF, please wait...",
       });
 
-      const result = await generateLastBalancePDF(selectedCustomer, customerSummary.customerName);
+      const result = await generateLastBalancePDF(selectedCustomer, customerSummary.customerName, Capacitor.isNativePlatform());
 
       if (result.success) {
         toast({
@@ -219,45 +220,7 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
     }
   };
 
-  const handleForceShareLastBalancePDF = async () => {
-    if (!selectedCustomer || !customerSummary) {
-      toast({
-        title: "Error",
-        description: "Please select a customer first",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    try {
-      toast({
-        title: "Processing",
-        description: "Generating PDF for sharing, please wait...",
-      });
-
-      const result = await generateLastBalancePDF(selectedCustomer, customerSummary.customerName, true); // Force share
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: result.message || "PDF shared successfully"
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.message || "Failed to share PDF",
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error('PDF sharing failed:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to share Last Balance PDF",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -305,14 +268,6 @@ export const LastBalance = ({ onNavigate }: LastBalanceProps) => {
                   >
                     <Download className="w-4 h-4" />
                     Generate PDF
-                  </Button>
-                  <Button 
-                    onClick={handleForceShareLastBalancePDF}
-                    size="sm"
-                    className="flex items-center gap-1"
-                  >
-                    <Share className="w-4 h-4" />
-                    Share PDF Directly
                   </Button>
                 </CardTitle>
               </CardHeader>
