@@ -499,7 +499,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
 
       // Get URI for sharing
       const fileUri = await Filesystem.getUri({
-        directory: Directory.Documents,
+        directory: Directory.Cache,
         path: `${saveResult.folderPath}/${fileName}`
       });
 
@@ -735,14 +735,28 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
       } catch (saveError) {
         logError(saveError, { function: 'generateAdvancePDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
+        const timestamp = new Date().getTime();
+        const uniqueFileName = `advance_fallback_${timestamp}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: uniqueFileName
+        });
+
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Advance Amounts Report',
-          text: `Advance amounts report generated on ${formatDate(new Date())} (failed to save)`,
-          url: `data:application/pdf;base64,${base64Data}`,
+          text: `Advance amounts report generated on ${formatDate(new Date())}`,
+          url: fileUri.uri,
           dialogTitle: 'Share Advance Amounts Report'
         });
-        return { success: true, message: 'Advance Amounts Report shared directly (failed to save)!' };
+        return { success: true, message: 'Advance Amounts Report shared successfully!' };
       }
     } else {
       doc.save(fileName);

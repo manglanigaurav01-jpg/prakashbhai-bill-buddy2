@@ -90,24 +90,32 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
       const base64Data = await blobToBase64(blob);
 
       if (forceShare) {
-        try {
-          await Share.share({
-            title: 'Bill Buddy Backup',
-            text: 'Complete backup of all customer data, bills, payments, and balances',
-            url: `data:application/json;base64,${base64Data}`,
-            dialogTitle: 'Share Backup File'
-          });
-          return {
-            success: true,
-            message: 'Backup shared successfully!'
-          };
-        } catch (shareError) {
-          console.error('Force share backup failed:', shareError);
-          return {
-            success: false,
-            message: `Failed to share backup: ${shareError instanceof Error ? shareError.message : 'Unknown error'}`
-          };
-        }
+        // Write to filesystem first
+        const timestamp = new Date().getTime();
+        const uniqueFileName = `backup_force_${timestamp}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+
+        const fileUri = await Filesystem.getUri({
+          path: uniqueFileName,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: 'Bill Buddy Backup',
+          text: 'Complete backup of all customer data, bills, payments, and balances',
+          url: fileUri.uri,
+          dialogTitle: 'Share Backup File'
+        });
+
+        return {
+          success: true,
+          message: 'Backup shared successfully!'
+        };
       }
 
       // Mobile: Attempt to save to device storage first
@@ -121,7 +129,7 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
         // Share the file
         const fileUri = await Filesystem.getUri({
           path: fileName,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         await Share.share({
@@ -138,22 +146,29 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
         };
       } catch (filesystemError) {
         console.error('Filesystem backup failed, attempting force share:', filesystemError);
-        // Fallback to force share if filesystem operations fail
-        try {
-          await Share.share({
-            title: 'Bill Buddy Backup',
-            text: 'Complete backup of all customer data, bills, payments, and balances (failed to save to device)',
-            url: `data:application/json;base64,${base64Data}`,
-            dialogTitle: 'Share Backup File'
-          });
-          return { success: true, message: 'Backup shared directly (failed to save to device)!' };
-        } catch (fallbackShareError) {
-          console.error('Fallback force share backup failed:', fallbackShareError);
-          return {
-            success: false,
-            message: `Failed to create or share backup: ${fallbackShareError instanceof Error ? fallbackShareError.message : 'Unknown error'}`
-          };
-        }
+        // Fallback: write to unique file and share
+        const timestamp2 = new Date().getTime();
+        const uniqueFileName2 = `backup_fallback_${timestamp2}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName2,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+
+        const fileUri2 = await Filesystem.getUri({
+          path: uniqueFileName2,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: 'Bill Buddy Backup',
+          text: 'Complete backup of all customer data, bills, payments, and balances',
+          url: fileUri2.uri,
+          dialogTitle: 'Share Backup File'
+        });
+
+        return { success: true, message: 'Backup shared successfully!' };
       }
     } else {
       // Web: Download file

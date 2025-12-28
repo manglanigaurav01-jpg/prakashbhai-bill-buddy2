@@ -195,12 +195,27 @@ export const generateMonthlyBalancePDF = async (
       // For mobile platforms
       try {
         if (forceShare) {
+          const timestamp = new Date().getTime();
+          const uniqueFileName = `monthly_force_${timestamp}_${fileName}`;
+
+          await Filesystem.writeFile({
+            path: uniqueFileName,
+            data: base64Data,
+            directory: Directory.Cache
+          });
+
+          const fileUri = await Filesystem.getUri({
+            path: uniqueFileName,
+            directory: Directory.Cache
+          });
+
           await Share.share({
             title: 'Monthly Balance PDF',
             text: `Balance Statement for ${customerName} - ${format(monthDate, 'MMMM yyyy')}`,
-            url: `data:application/pdf;base64,${base64Data}`,
+            url: fileUri.uri,
             dialogTitle: 'Share Monthly Balance PDF'
           });
+
           return {
             success: true,
             message: 'Monthly Balance PDF shared successfully!'
@@ -240,19 +255,27 @@ export const generateMonthlyBalancePDF = async (
         };
       } catch (err: any) {
         console.error('Mobile PDF handling error:', err);
-        // Fallback to force share if filesystem operations fail
-        try {
-          await Share.share({
-            title: 'Monthly Balance PDF',
-            text: `Balance Statement for ${customerName} - ${format(monthDate, 'MMMM yyyy')} (failed to save to folder)`,
-            url: `data:application/pdf;base64,${base64Data}`,
-            dialogTitle: 'Share Monthly Balance PDF'
-          });
-          return { success: true, message: 'Monthly Balance PDF shared directly (failed to save to folder)!' };
-        } catch (fallbackShareErr: any) {
-          console.error('Fallback force share failed:', fallbackShareErr);
-          throw new Error(fallbackShareErr instanceof Error ? fallbackShareErr.message : 'Failed to save or share PDF');
-        }
+        // Fallback: write to unique file and share
+        const timestamp2 = new Date().getTime();
+        const uniqueFileName2 = `monthly_fallback_${timestamp2}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName2,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+
+        const fileUri2 = await Filesystem.getUri({
+          path: uniqueFileName2,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: 'Monthly Balance PDF',
+          text: `Balance Statement for ${customerName} - ${format(monthDate, 'MMMM yyyy')}`,
+          url: fileUri2.uri,
+          dialogTitle: 'Share Monthly Balance PDF'
+        });
       }
     }
   } catch (error) {
@@ -638,19 +661,27 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
         };
       } catch (err: any) {
         console.error('Mobile PDF handling error:', err);
-        // Fallback to force share if filesystem operations fail
-        try {
-          await Share.share({
-            title: 'Last Balance PDF',
-            text: `Last Balance Statement for ${customerName} (failed to save to folder)`,
-            url: `data:application/pdf;base64,${base64Data}`,
-            dialogTitle: 'Share Last Balance PDF'
-          });
-          return { success: true, message: 'Last Balance PDF shared directly (failed to save to folder)!' };
-        } catch (fallbackShareErr: any) {
-          console.error('Fallback force share failed:', fallbackShareErr);
-          throw new Error(fallbackShareErr instanceof Error ? fallbackShareErr.message : 'Failed to save or share PDF');
-        }
+        // Fallback: write to unique file and share
+        const timestamp2 = new Date().getTime();
+        const uniqueFileName2 = `lastbal_fallback_${timestamp2}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName2,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+
+        const fileUri2 = await Filesystem.getUri({
+          path: uniqueFileName2,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: 'Last Balance PDF',
+          text: `Last Balance Statement for ${customerName}`,
+          url: fileUri2.uri,
+          dialogTitle: 'Share Last Balance PDF'
+        });
       }
     }
   } catch (error) {
