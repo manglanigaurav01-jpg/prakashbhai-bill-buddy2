@@ -23,7 +23,7 @@ export const ItemAnalytics: React.FC<ItemAnalyticsProps> = ({ items, showAnalyti
         setAnalytics(analyticsData);
         setMostUsed(mostUsedData);
       }
-    }, [showAnalytics, getItemUsageAnalytics, getMostUsedItems]);
+    }, [showAnalytics]);
   
     const totalItems = analytics.length;
     const fixedPriceItems = items.filter(item => item.type === 'fixed').length;

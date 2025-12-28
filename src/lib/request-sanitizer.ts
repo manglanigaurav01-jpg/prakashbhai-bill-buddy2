@@ -173,10 +173,16 @@ export class RequestSanitizer {
    */
   private static sanitizeUrl(url: string): { url: string; sanitized: boolean } {
     let sanitized = false;
-    let cleanUrl = url;
+    let cleanUrl = '';
 
-    // Remove null bytes and other control characters
-    cleanUrl = cleanUrl.replace(/[\\x00-\\x1F\\x7F-\\x9F]/g, '');
+    for (let i = 0; i < url.length; i++) {
+      const charCode = url.charCodeAt(i);
+      if ((charCode >= 0 && charCode <= 31) || (charCode >= 127 && charCode <= 159)) {
+        sanitized = true;
+        continue;
+      }
+      cleanUrl += url[i];
+    }
 
     // Normalize path traversal attempts
     cleanUrl = cleanUrl.replace(/\.\./g, '');
@@ -184,7 +190,7 @@ export class RequestSanitizer {
     // Remove suspicious characters
     cleanUrl = cleanUrl.replace(/[<>]/g, '');
 
-    sanitized = cleanUrl !== url;
+    sanitized = sanitized || cleanUrl !== url;
 
     return { url: cleanUrl, sanitized };
   }

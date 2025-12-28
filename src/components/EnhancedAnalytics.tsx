@@ -28,11 +28,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    calculateAnalytics();
-  }, [timeRange, calculateAnalytics]);
-
-  const calculateAnalytics = async () => {
+  const calculateAnalytics = React.useCallback(async () => {
     setLoading(true);
     
     // Use requestIdleCallback or setTimeout to prevent blocking UI with large datasets
@@ -159,7 +155,11 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
       seasonalTrends: [], // To be implemented
     });
     setLoading(false);
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    calculateAnalytics();
+  }, [calculateAnalytics]);
 
   const exportToExcel = async () => {
     if (!analyticsData) {

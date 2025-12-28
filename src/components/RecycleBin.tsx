@@ -16,7 +16,7 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const loadRecycleBin = () => {
+  const loadRecycleBin = React.useCallback(() => {
     const cleaned = cleanupOldItems();
     if (cleaned > 0) {
       toast({
@@ -25,7 +25,7 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
       });
     }
     setRecycleBin(getRecycleBin());
-  };
+  }, [toast]);
 
   useEffect(() => {
     loadRecycleBin();
