@@ -614,18 +614,32 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
     } else {
       // For mobile platforms
       try {
-        if (forceShare) {
-          await Share.share({
-            title: 'Last Balance PDF',
-            text: `Last Balance Statement for ${customerName}`,
-            url: `data:application/pdf;base64,${base64Data}`,
-            dialogTitle: 'Share Last Balance PDF'
-          });
-          return {
-            success: true,
-            message: 'Last Balance PDF shared successfully!'
-          };
-        }
+       if (forceShare) {
+  const timestamp = new Date().getTime();
+  const uniqueFileName = `lastbal_force_${timestamp}_${fileName}`;
+
+  await Filesystem.writeFile({
+    path: uniqueFileName,
+    data: base64Data,
+    directory: Directory.Cache
+  });
+
+  const fileUri = await Filesystem.getUri({
+    path: uniqueFileName,
+    directory: Directory.Cache
+  });
+
+  await Share.share({
+    title: 'Last Balance PDF',
+    text: `Last Balance Statement for ${customerName}`,
+    url: fileUri.uri,
+    dialogTitle: 'Share Last Balance PDF'
+  });
+  return {
+    success: true,
+    message: 'Last Balance PDF shared successfully!'
+  };
+}
 
         // Attempt to save to filesystem first
         const timestamp = new Date().getTime();
@@ -646,12 +660,26 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
           throw new Error('Could not get file URI');
         }
 
-        await Share.share({
-          title: 'Last Balance PDF',
-          text: `Last Balance Statement for ${customerName}`,
-          url: fileInfo.uri,
-          dialogTitle: 'Share Last Balance PDF'
-        });
+        const timestamp2 = new Date().getTime();
+const uniqueFileName2 = `lastbal_fallback_${timestamp2}_${fileName}`;
+
+await Filesystem.writeFile({
+  path: uniqueFileName2,
+  data: base64Data,
+  directory: Directory.Cache
+});
+
+const fileUri2 = await Filesystem.getUri({
+  path: uniqueFileName2,
+  directory: Directory.Cache
+});
+
+await Share.share({
+  title: 'Last Balance PDF',
+  text: `Last Balance Statement for ${customerName}`,
+  url: fileUri2.uri,
+  dialogTitle: 'Share Last Balance PDF'
+});
 
         return { 
           success: true, 
