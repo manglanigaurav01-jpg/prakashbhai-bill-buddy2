@@ -43,7 +43,7 @@ export const BalanceTracker = ({ onNavigate }: BalanceTrackerProps) => {
 
   const handleGenerateSummaryPDF = async (customerId: string) => {
     try {
-      const result = await generateCustomerSummaryPDF(customerId);
+      const result = await generateCustomerSummaryPDF(customerId, Capacitor.isNativePlatform());
       if (result.success) {
         toast({
           title: "Summary Generated",

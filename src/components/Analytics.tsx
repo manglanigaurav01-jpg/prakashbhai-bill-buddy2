@@ -143,45 +143,116 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
     calculateAnalytics();
   }, [timeRange, calculateAnalytics]);
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!analyticsData) return;
 
-    const workbook = {
-      SheetNames: ['Revenue', 'Top Items', 'Customer Patterns', 'Outstanding', 'Seasonal'],
-      Sheets: {
-        'Revenue': utils.json_to_sheet(analyticsData.revenues),
-        'Top Items': utils.json_to_sheet(analyticsData.topItems),
-        'Customer Patterns': utils.json_to_sheet(analyticsData.customerPatterns),
-        'Outstanding': utils.json_to_sheet(analyticsData.outstandingPayments),
-        'Seasonal': utils.json_to_sheet(analyticsData.seasonalTrends)
-      }
-    };
-    // Use a web worker to generate the workbook to avoid blocking the UI
+    const fileName = `analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
     try {
       const worker = new Worker(new URL('@/workers/export-worker.ts', import.meta.url));
-      worker.postMessage({ type: 'export-xlsx', workbook, fileName: `analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.xlsx` });
-      worker.onmessage = (ev) => {
+      worker.postMessage({ type: 'export-xlsx', workbook: {
+        SheetNames: ['Revenue', 'Top Items', 'Customer Patterns', 'Outstanding', 'Seasonal'],
+        Sheets: {
+          'Revenue': utils.json_to_sheet(analyticsData.revenues),
+          'Top Items': utils.json_to_sheet(analyticsData.topItems),
+          'Customer Patterns': utils.json_to_sheet(analyticsData.customerPatterns),
+          'Outstanding': utils.json_to_sheet(analyticsData.outstandingPayments),
+          'Seasonal': utils.json_to_sheet(analyticsData.seasonalTrends)
+        }
+      }, fileName });
+
+      worker.onmessage = async (ev) => {
         const msg = ev.data as any;
         if (msg.type === 'export-xlsx-result') {
           const buffer = msg.buffer as ArrayBuffer;
-          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-
-          link.href = url;
-          link.download = msg.fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
           worker.terminate();
+
+          if (Capacitor.isNativePlatform()) {
+            try {
+              // Convert ArrayBuffer to Blob, then to base64 for Filesystem.writeFile
+              const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+              const reader = new FileReader();
+              reader.readAsDataURL(blob);
+              reader.onloadend = async () => {
+                const base64data = reader.result as string; // data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,...
+
+                const cleanBase64 = base64data.split(',')[1]; // Remove data:mime/type;base64, prefix
+
+                await Filesystem.writeFile({
+                  path: fileName,
+                  data: cleanBase64,
+                  directory: Directory.Documents,
+                  recursive: true // Ensure directories exist
+                });
+
+                const fileUri = await Filesystem.getUri({
+                  directory: Directory.Documents,
+                  path: fileName
+                });
+
+                await Share.share({
+                  title: 'Analytics Report',
+                  text: 'Analytics report generated from Bill Buddy',
+                  url: fileUri.uri,
+                  dialogTitle: 'Share Analytics Report'
+                });
+                toast({
+                  title: 'Share Successful',
+                  description: 'Analytics report shared.',
+                });
+              };
+            } catch (error) {
+              console.error('Error saving or sharing XLSX on native:', error);
+              toast({
+                title: 'Share Failed',
+                description: 'Could not save or share analytics report. Please try again.',
+                variant: 'destructive',
+              });
+            }
+          } else {
+            // Web platform: trigger download
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            link.href = url;
+            link.download = msg.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast({
+              title: 'Download Successful',
+              description: 'Analytics report downloaded.',
+            });
+          }
         } else if (msg.type === 'error') {
           console.error('Worker error:', msg.message);
           worker.terminate();
+          toast({
+            title: 'Export Failed',
+            description: 'Could not generate analytics report. Please try again.',
+            variant: 'destructive',
+          });
         }
       };
+      worker.onerror = (err) => {
+        console.error('Worker runtime error:', err);
+        worker.terminate();
+        toast({
+          title: 'Export Failed',
+          description: 'An unexpected error occurred during report generation. Please try again.',
+          variant: 'destructive',
+        });
+      };
+
     } catch (err) {
-      console.error('Worker creation failed, falling back to main thread', err);
+      console.error('Worker creation or main thread fallback failed:', err);
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to initiate analytics report generation. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 

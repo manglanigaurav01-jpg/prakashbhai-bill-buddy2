@@ -546,33 +546,46 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
         return { success: true, message: 'Pending Amounts Report shared successfully!' };
       }
 
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: FILESYSTEM_DIR,
-      });
+      try {
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR,
+        });
 
-      const fileUri = await Filesystem.getUri({
-        directory: FILESYSTEM_DIR,
-        path: fileName
-      });
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: fileName
+        });
 
-      const { Share } = await import('@capacitor/share');
-      await Share.share({
-        title: 'Pending Amounts Report',
-        text: `Pending amounts report generated on ${formatDate(new Date())}`,
-        url: fileUri.uri,
-        dialogTitle: 'Save or Share PDF'
-      });
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Pending Amounts Report',
+          text: `Pending amounts report generated on ${formatDate(new Date())}`,
+          url: fileUri.uri,
+          dialogTitle: 'Save or Share PDF'
+        });
 
-      return { success: true, message: 'PDF ready - choose where to save it!' };
+        return { success: true, message: 'PDF ready - choose where to save it!' };
+      } catch (saveError) {
+        console.error('Error saving PDF to filesystem:', saveError);
+        // Fallback to force sharing if saving to filesystem fails
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Pending Amounts Report',
+          text: `Pending amounts report generated on ${formatDate(new Date())} (failed to save)`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Pending Amounts Report'
+        });
+        return { success: true, message: 'Pending Amounts Report shared directly (failed to save)!' };
+      }
     } else {
       doc.save(fileName);
       return { success: true, message: 'Pending amounts report downloaded successfully' };
     }
   } catch (error) {
-    console.error('Error saving PDF:', error);
-    return { success: false, message: 'Failed to save pending amounts report. Please try again.' };
+    console.error('Error in generatePendingPDF:', error);
+    return { success: false, message: 'Failed to generate pending amounts report. Please try again.' };
   }
 };
 
@@ -625,32 +638,45 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
         return { success: true, message: 'Advance Amounts Report shared successfully!' };
       }
 
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: FILESYSTEM_DIR,
-      });
+      try {
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR,
+        });
 
-      const fileUri = await Filesystem.getUri({
-        directory: FILESYSTEM_DIR,
-        path: fileName
-      });
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: fileName
+        });
 
-      const { Share } = await import('@capacitor/share');
-      await Share.share({
-        title: 'Advance Amounts Report',
-        text: `Advance amounts report generated on ${formatDate(new Date())}`,
-        url: fileUri.uri,
-        dialogTitle: 'Save or Share PDF'
-      });
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Advance Amounts Report',
+          text: `Advance amounts report generated on ${formatDate(new Date())}`,
+          url: fileUri.uri,
+          dialogTitle: 'Save or Share PDF'
+        });
 
-      return { success: true, message: 'PDF ready - choose where to save it!' };
+        return { success: true, message: 'PDF ready - choose where to save it!' };
+      } catch (saveError) {
+        console.error('Error saving PDF to filesystem:', saveError);
+        // Fallback to force sharing if saving to filesystem fails
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+          title: 'Advance Amounts Report',
+          text: `Advance amounts report generated on ${formatDate(new Date())} (failed to save)`,
+          url: `data:application/pdf;base64,${base64Data}`,
+          dialogTitle: 'Share Advance Amounts Report'
+        });
+        return { success: true, message: 'Advance Amounts Report shared directly (failed to save)!' };
+      }
     } else {
       doc.save(fileName);
       return { success: true, message: 'Advance amounts report downloaded successfully' };
     }
   } catch (error) {
-    console.error('Error saving PDF:', error);
-    return { success: false, message: 'Failed to save advance amounts report. Please try again.' };
+    console.error('Error in generateAdvancePDF:', error);
+    return { success: false, message: 'Failed to generate advance amounts report. Please try again.' };
   }
 };

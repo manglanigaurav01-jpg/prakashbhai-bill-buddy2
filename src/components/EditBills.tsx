@@ -14,6 +14,8 @@ import { Bill, BillItem, Customer } from '@/types';
 import { shareViaWhatsApp, createBillMessage } from '@/lib/whatsapp';
 import { SwipeableItem } from '@/components/SwipeableItem';
 import { hapticMedium, hapticSuccess, hapticError } from '@/lib/haptics';
+import { generateBillPDF } from '@/lib/pdf'; // Added import
+import { Capacitor } from '@capacitor/core'; // Added import
 
 
 interface EditBillsProps {
@@ -384,8 +386,30 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                                 </div>
                                 <div className="flex gap-2">
                                   <Button size="sm" variant="outline" onClick={async () => {
-                                    const message = createBillMessage(bill);
-                                    await shareViaWhatsApp('', message);
+                                    if (Capacitor.isNativePlatform()) {
+                                      try {
+                                        await generateBillPDF(bill, true); // Force share the bill PDF
+                                        toast({
+                                          title: 'Bill Shared',
+                                          description: 'Bill PDF shared successfully.',
+                                        });
+                                      } catch (error) {
+                                        console.error('Error sharing bill PDF:', error);
+                                        toast({
+                                          title: 'Share Failed',
+                                          description: 'Could not share bill PDF. Please try again.',
+                                          variant: 'destructive',
+                                        });
+                                      }
+                                    } else {
+                                      // Fallback for web or if not a native platform, maybe still use WhatsApp or offer download
+                                      const message = createBillMessage(bill);
+                                      await shareViaWhatsApp('', message); // Keep original WhatsApp share for web
+                                      toast({
+                                        title: 'Bill Shared (Web)',
+                                        description: 'Bill details shared via WhatsApp.',
+                                      });
+                                    }
                                   }}>
                                     <Share2 className="w-4 h-4" />
                                   </Button>
