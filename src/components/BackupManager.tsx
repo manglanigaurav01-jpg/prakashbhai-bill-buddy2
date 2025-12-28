@@ -16,13 +16,11 @@ export const BackupManager = () => {
   const handleCreateBackup = async () => {
     setIsLoading(true);
     try {
-      const result = await createBackup();
+      const result = await createBackup(Capacitor.isNativePlatform());
       if (result.success) {
         toast({
           title: "Backup Created",
-          description: Capacitor.isNativePlatform()
-            ? "Backup created and shared successfully. Save it to your preferred location."
-            : "Backup downloaded successfully."
+          description: result.message
         });
       } else {
         throw new Error(result.message);
