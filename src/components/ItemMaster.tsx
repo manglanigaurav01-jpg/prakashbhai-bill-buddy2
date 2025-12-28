@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { ItemAnalytics } from './ItemAnalytics';
 import { ItemMaster as ItemMasterType } from '@/types';
+import { getItems, saveItem, updateItem, deleteItem } from '@/lib/storage';
 
 interface ItemMasterProps {
   onNavigate: (view: string) => void;

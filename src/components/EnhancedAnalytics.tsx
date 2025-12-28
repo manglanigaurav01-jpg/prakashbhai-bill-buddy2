@@ -1,4 +1,4 @@
- import { useState, useEffect } from 'react';
+ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, TrendingUp, Users, Package, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
