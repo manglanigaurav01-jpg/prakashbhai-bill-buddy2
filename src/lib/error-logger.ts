@@ -23,7 +23,6 @@ export const initErrorLogging = async (sentryDsn?: string): Promise<void> => {
     try {
       // Dynamically import Sentry if DSN is provided
       // Note: @sentry/react is optional dependency
-      // @ts-expect-error - Optional dependency, may not be installed
       const Sentry = await import('@sentry/react').catch(() => null);
       if (Sentry && Sentry.init) {
         Sentry.init({
