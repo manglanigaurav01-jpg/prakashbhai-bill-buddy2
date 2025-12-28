@@ -9,38 +9,26 @@ const auth = getAuth(app);
 
 export const signInWithGoogle = async () => {
   try {
-    if (Capacitor.isNativePlatform()) {
-      // Try native plugin first (if installed); otherwise fall back to web popup
-      try {
-        const mod = await import('@codetrix-studio/capacitor-google-auth');
-        if (mod && mod.GoogleAuth && typeof mod.GoogleAuth.signIn === 'function') {
-          const googleUser = await mod.GoogleAuth.signIn();
-          const credential = GoogleAuthProvider.credential(
-            googleUser.authentication.idToken,
-            googleUser.authentication.accessToken
-          );
-          const result = await signInWithCredential(auth, credential);
-          return { success: true, user: result.user };
-        }
-      } catch (err) {
-        console.warn('Native GoogleAuth not available, falling back to web popup:', err);
-      }
-      // If native path wasn't available, continue to web popup below
-    }
-
-    // Use Firebase popup for web (or fallback for native when plugin unavailable)
+    // Use Firebase's built-in Google authentication for both web and mobile
     const provider = new GoogleAuthProvider();
-    
+
+    // Configure provider for better compatibility
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
     // Add timeout to prevent infinite loading
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Sign-in timeout. Please try again.')), 60000); // 60 second timeout
     });
-    
+
     const signInPromise = signInWithPopup(auth, provider);
-    
+
     // Race between sign-in and timeout
     const result = await Promise.race([signInPromise, timeoutPromise]) as any;
-    
+
     if (result?.user) {
       return { success: true, user: result.user };
     } else {
@@ -48,23 +36,23 @@ export const signInWithGoogle = async () => {
     }
   } catch (error: any) {
     console.error('Google sign-in error:', error);
-    
+
     // Handle specific error cases
     if (error.code === 'auth/popup-closed-by-user' || error.message?.includes('popup')) {
       return { success: false, error: 'Sign-in cancelled. Please try again.' };
     }
-    
+
     if (error.code === 'auth/popup-blocked') {
       return { success: false, error: 'Popup was blocked. Please allow popups and try again.' };
     }
-    
+
     if (error.message?.includes('timeout')) {
       return { success: false, error: 'Sign-in timed out. Please try again.' };
     }
-    
-    return { 
-      success: false, 
-      error: error.message || error.code || 'Sign in failed. Please try again.' 
+
+    return {
+      success: false,
+      error: error.message || error.code || 'Sign in failed. Please try again.'
     };
   }
 };
@@ -72,16 +60,6 @@ export const signInWithGoogle = async () => {
 export const signOutUser = async () => {
   try {
     await signOut(auth);
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const mod = await import('@codetrix-studio/capacitor-google-auth');
-        if (mod && mod.GoogleAuth && typeof mod.GoogleAuth.signOut === 'function') {
-          await mod.GoogleAuth.signOut();
-        }
-      } catch (err) {
-        // ignore if plugin not installed
-      }
-    }
     return { success: true };
   } catch (error) {
     console.error('Sign out error:', error);
