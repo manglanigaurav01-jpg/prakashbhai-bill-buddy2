@@ -388,16 +388,24 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                                   <Button size="sm" variant="outline" onClick={async () => {
                                     if (Capacitor.isNativePlatform()) {
                                       try {
-                                        await generateBillPDF(bill, true); // Force share the bill PDF
-                                        toast({
-                                          title: 'Bill Shared',
-                                          description: 'Bill PDF shared successfully.',
-                                        });
-                                      } catch (error) {
+                                        const result = await generateBillPDF(bill, true); // Force share the bill PDF
+                                        if (result.success) {
+                                          toast({
+                                            title: 'Bill Shared',
+                                            description: result.message,
+                                          });
+                                        } else {
+                                          toast({
+                                            title: 'Share Failed',
+                                            description: result.message,
+                                            variant: 'destructive',
+                                          });
+                                        }
+                                      } catch (error: any) {
                                         console.error('Error sharing bill PDF:', error);
                                         toast({
                                           title: 'Share Failed',
-                                          description: 'Could not share bill PDF. Please try again.',
+                                          description: error.message || 'Could not share bill PDF. Please try again.',
                                           variant: 'destructive',
                                         });
                                       }

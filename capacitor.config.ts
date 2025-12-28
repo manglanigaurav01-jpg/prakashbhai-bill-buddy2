@@ -19,6 +19,7 @@ const config: CapacitorConfig = {
       iosStorageLocation: 'Documents',
       androidStorageLocation: 'Documents'
     },
+    Share: {},
     GoogleAuth: {
       scopes: ['profile', 'email'],
       serverClientId: '491579424292-96mf2l65h34g6ld29qngoc3sf2qe2v73.apps.googleusercontent.com', // Web client ID from Firebase

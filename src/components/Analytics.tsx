@@ -186,30 +186,39 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
                 await Filesystem.writeFile({
                   path: fileName,
                   data: cleanBase64,
-                  directory: 'DOCUMENTS' as Directory, // Using string literal with type assertion
+                  directory: 'DOCUMENTS' as Directory,
                 });
 
                 const fileUri = await Filesystem.getUri({
-                  directory: 'DOCUMENTS' as Directory, // Using string literal with type assertion
+                  directory: 'DOCUMENTS' as Directory,
                   path: fileName
                 });
 
-                await Share.share({
-                  title: 'Analytics Report',
-                  text: 'Analytics report generated from Bill Buddy',
-                  url: fileUri.uri,
-                  dialogTitle: 'Share Analytics Report'
-                });
-                toast({
-                  title: 'Share Successful',
-                  description: 'Analytics report shared.',
-                });
+                try {
+                  await Share.share({
+                    title: 'Analytics Report',
+                    text: 'Analytics report generated from Bill Buddy',
+                    url: fileUri.uri,
+                    dialogTitle: 'Share Analytics Report'
+                  });
+                  toast({
+                    title: 'Share Successful',
+                    description: 'Analytics report shared.',
+                  });
+                } catch (shareError: any) {
+                  console.error('Error sharing analytics report:', shareError);
+                  toast({
+                    title: 'Share Failed',
+                    description: shareError.message || 'Could not share analytics report. Please try again.',
+                    variant: 'destructive',
+                  });
+                }
               };
-            } catch (error) {
-              console.error('Error saving or sharing XLSX on native:', error);
+            } catch (fsError: any) {
+              console.error('Error saving XLSX to filesystem:', fsError);
               toast({
                 title: 'Share Failed',
-                description: 'Could not save or share analytics report. Please try again.',
+                description: fsError.message || 'Failed to save file for sharing. Please try again.',
                 variant: 'destructive',
               });
             }
