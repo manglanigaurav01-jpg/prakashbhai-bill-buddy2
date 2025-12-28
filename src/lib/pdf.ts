@@ -181,7 +181,7 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
       const saveResult = await saveFileToCustomerFolder(balance.customerName, fileName, base64Data);
 
       if (!saveResult.success) {
-        console.error('Failed to save PDF to customer folder:', saveResult.error);
+        logError(saveResult.error, { function: 'generateCustomerSummaryPDF', customerId, fileName }, 'error');
         // Fallback to force sharing if saving to customer folder fails
         const { Share } = await import('@capacitor/share');
         await Share.share({
@@ -468,7 +468,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
       const saveResult = await saveFileToCustomerFolder(bill.customerName, fileName, base64Data);
 
       if (!saveResult.success) {
-        console.error('Failed to save PDF to customer folder:', saveResult.error);
+        logError(saveResult.error, { function: 'generateBillPDF', billId: bill.id, customerName: bill.customerName, fileName }, 'error');
         // Fallback to force sharing if saving to customer folder fails
         return await generateBillPDFForceShare(bill);
       }
@@ -569,7 +569,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
 
         return { success: true, message: 'PDF ready - choose where to save it!' };
       } catch (saveError) {
-        console.error('Error saving PDF to filesystem:', saveError);
+        logError(saveError, { function: 'generatePendingPDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
         const { Share } = await import('@capacitor/share');
         await Share.share({
@@ -661,7 +661,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
 
         return { success: true, message: 'PDF ready - choose where to save it!' };
       } catch (saveError) {
-        console.error('Error saving PDF to filesystem:', saveError);
+        logError(saveError, { function: 'generateAdvancePDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
         const { Share } = await import('@capacitor/share');
         await Share.share({
