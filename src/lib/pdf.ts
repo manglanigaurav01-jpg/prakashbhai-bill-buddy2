@@ -166,48 +166,55 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
-      if (forceShare) {
+      // Always save to temporary file and share URI for native platforms to ensure compatibility
+      const timestamp = new Date().getTime();
+      const uniqueFileName = `summary_${timestamp}_${fileName}`;
+
+      try {
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR,
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: uniqueFileName
+        });
+
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Customer Summary PDF',
           text: `Summary for ${balance.customerName}`,
-          url: `data:application/pdf;base64,${base64Data}`,
+          url: fileUri.uri,
           dialogTitle: 'Share Customer Summary PDF'
         });
+
         return { success: true, message: 'Customer Summary PDF shared successfully!' };
+      } catch (saveError) {
+        logError(saveError, { function: 'generateCustomerSummaryPDF', customerId, fileName }, 'error');
+        // If saving fails, try to save to customer folder as fallback
+        const saveResult = await saveFileToCustomerFolder(balance.customerName, fileName, base64Data);
+
+        if (saveResult.success) {
+          const fileUri = await Filesystem.getUri({
+            directory: 'DOCUMENTS',
+            path: `${saveResult.folderPath}/${fileName}`
+          });
+
+          const { Share } = await import('@capacitor/share');
+          await Share.share({
+            title: 'Customer Summary PDF',
+            text: 'Summary generated successfully',
+            url: fileUri.uri,
+            dialogTitle: 'Save or Share PDF'
+          });
+
+          return { success: true, message: 'PDF saved to customer folder!' };
+        } else {
+          throw new Error('Failed to save PDF file');
+        }
       }
-
-      // Save PDF to customer's folder
-      const saveResult = await saveFileToCustomerFolder(balance.customerName, fileName, base64Data);
-
-      if (!saveResult.success) {
-        logError(saveResult.error, { function: 'generateCustomerSummaryPDF', customerId, fileName }, 'error');
-        // Fallback to force sharing if saving to customer folder fails
-        const { Share } = await import('@capacitor/share');
-        await Share.share({
-          title: 'Customer Summary PDF',
-          text: `Summary for ${balance.customerName} (failed to save to folder)`,
-          url: `data:application/pdf;base64,${base64Data}`,
-          dialogTitle: 'Share Customer Summary PDF'
-        });
-        return { success: true, message: 'Customer Summary PDF shared directly (failed to save to folder)!' };
-      }
-
-      // Get URI for sharing
-      const fileUri = await Filesystem.getUri({
-        directory: 'DOCUMENTS',
-        path: `${saveResult.folderPath}/${fileName}`
-      });
-
-      const { Share } = await import('@capacitor/share');
-      await Share.share({
-        title: 'Customer Summary PDF',
-        text: 'Summary generated successfully',
-        url: fileUri.uri,
-        dialogTitle: 'Save or Share PDF'
-      });
-
-      return { success: true, message: 'PDF saved to customer folder!' };
     } else {
       doc.save(fileName);
       return { success: true, message: 'Summary downloaded successfully' };
