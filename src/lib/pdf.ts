@@ -337,12 +337,28 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
-      // Force share directly without saving to filesystem
+      // Write file to Cache directory
+      const timestamp = new Date().getTime();
+      const uniqueFileName = `bill_${timestamp}_${fileName}`;
+
+      await Filesystem.writeFile({
+        path: uniqueFileName,
+        data: base64Data,
+        directory: FILESYSTEM_DIR
+      });
+
+      // Get the file URI
+      const fileUri = await Filesystem.getUri({
+        directory: FILESYSTEM_DIR,
+        path: uniqueFileName
+      });
+
+      // Share using the URI
       const { Share } = await import('@capacitor/share');
       await Share.share({
         title: 'Bill PDF',
         text: `Bill for ${bill.customerName} - ${formatDate(new Date(bill.date))}`,
-        url: `data:application/pdf;base64,${base64Data}`,
+        url: fileUri.uri,
         dialogTitle: 'Share Bill PDF'
       });
 
@@ -545,11 +561,28 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
       const base64Data = arrayBufferToBase64(pdfOutput);
 
       if (forceShare) {
+        // Write file to Cache directory
+        const timestamp = new Date().getTime();
+        const uniqueFileName = `pending_${timestamp}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR
+        });
+
+        // Get the file URI
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: uniqueFileName
+        });
+
+        // Share using the URI
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Pending Amounts Report',
           text: `Pending amounts report generated on ${formatDate(new Date())}`,
-          url: `data:application/pdf;base64,${base64Data}`,
+          url: fileUri.uri,
           dialogTitle: 'Share Pending Amounts Report'
         });
         return { success: true, message: 'Pending Amounts Report shared successfully!' };
@@ -579,11 +612,25 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
       } catch (saveError) {
         logError(saveError, { function: 'generatePendingPDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
+        const timestamp = new Date().getTime();
+        const uniqueFileName = `pending_fallback_${timestamp}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: uniqueFileName
+        });
+
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Pending Amounts Report',
           text: `Pending amounts report generated on ${formatDate(new Date())} (failed to save)`,
-          url: `data:application/pdf;base64,${base64Data}`,
+          url: fileUri.uri,
           dialogTitle: 'Share Pending Amounts Report'
         });
         return { success: true, message: 'Pending Amounts Report shared directly (failed to save)!' };
@@ -637,11 +684,28 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
       const base64Data = arrayBufferToBase64(pdfOutput);
 
       if (forceShare) {
+        // Write file to Cache directory
+        const timestamp = new Date().getTime();
+        const uniqueFileName = `advance_${timestamp}_${fileName}`;
+
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: FILESYSTEM_DIR
+        });
+
+        // Get the file URI
+        const fileUri = await Filesystem.getUri({
+          directory: FILESYSTEM_DIR,
+          path: uniqueFileName
+        });
+
+        // Share using the URI
         const { Share } = await import('@capacitor/share');
         await Share.share({
           title: 'Advance Amounts Report',
           text: `Advance amounts report generated on ${formatDate(new Date())}`,
-          url: `data:application/pdf;base64,${base64Data}`,
+          url: fileUri.uri,
           dialogTitle: 'Share Advance Amounts Report'
         });
         return { success: true, message: 'Advance Amounts Report shared successfully!' };
