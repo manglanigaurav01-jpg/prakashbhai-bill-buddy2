@@ -213,12 +213,12 @@ export const generateMonthlyBalancePDF = async (
         await Filesystem.writeFile({
           path: uniqueFileName,
           data: base64Data,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         const fileInfo = await Filesystem.getUri({
           path: uniqueFileName,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         if (!fileInfo.uri) {
@@ -611,12 +611,12 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
         await Filesystem.writeFile({
           path: uniqueFileName,
           data: base64Data,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         const fileInfo = await Filesystem.getUri({
           path: uniqueFileName,
-          directory: 'DOCUMENTS' as Directory
+          directory: Directory.Cache
         });
 
         if (!fileInfo.uri) {

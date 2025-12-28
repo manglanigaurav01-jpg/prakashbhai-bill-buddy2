@@ -1,13 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Bill, CustomerBalance } from '@/types';
-import { Filesystem } from '@capacitor/filesystem';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { saveFileToCustomerFolder } from './filesystem-utils';
 import { logError } from './error-logger';
 
 // Constants for Filesystem
-const FILESYSTEM_DIR = 'CACHE' as const;
+const FILESYSTEM_DIR = Directory.Cache;
 
 // Helper function for filesystem operations
 const _writeAndSharePDF = async (fileName: string, pdfData: ArrayBuffer) => {
@@ -198,7 +199,7 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
 
         if (saveResult.success) {
           const fileUri = await Filesystem.getUri({
-            directory: 'DOCUMENTS',
+            directory: Directory.Cache,
             path: `${saveResult.folderPath}/${fileName}`
           });
 
@@ -482,7 +483,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
 
       // Get URI for sharing
       const fileUri = await Filesystem.getUri({
-        directory: 'DOCUMENTS',
+        directory: Directory.Documents,
         path: `${saveResult.folderPath}/${fileName}`
       });
 
