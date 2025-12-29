@@ -104,6 +104,12 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
           path: uniqueFileName,
           directory: Directory.Cache
         });
+        // ADD THESE 5 LINES HERE (after line 354):
+      console.log('=== BILL PDF DEBUG ===');
+      console.log('File written to:', uniqueFileName);
+      console.log('File URI object:', fileUri);
+      console.log('File URI.uri value:', fileUri.uri);
+      console.log('======================');
 
         await Share.share({
           title: 'Bill Buddy Backup',

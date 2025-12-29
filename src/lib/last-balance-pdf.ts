@@ -618,28 +618,37 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
   const timestamp = new Date().getTime();
   const uniqueFileName = `lastbal_force_${timestamp}_${fileName}`;
 
-  await Filesystem.writeFile({
-    path: uniqueFileName,
-    data: base64Data,
-    directory: Directory.Cache
-  });
 
-  const fileUri = await Filesystem.getUri({
-    path: uniqueFileName,
-    directory: Directory.Cache
-  });
+        await Filesystem.writeFile({
+          path: uniqueFileName,
+          data: base64Data,
+          directory: Directory.Cache
+        });
 
-  await Share.share({
-    title: 'Last Balance PDF',
-    text: `Last Balance Statement for ${customerName}`,
-    url: fileUri.uri,
-    dialogTitle: 'Share Last Balance PDF'
-  });
-  return {
-    success: true,
-    message: 'Last Balance PDF shared successfully!'
-  };
-}
+        const fileUri = await Filesystem.getUri({
+          path: uniqueFileName,
+          directory: Directory.Cache
+        });
+
+        // DEBUG LOGGING
+        console.log('=== LAST BALANCE DEBUG ===');
+        console.log('File written to:', uniqueFileName);
+        console.log('File URI object:', fileUri);
+        console.log('File URI.uri value:', fileUri.uri);
+        console.log('===========================');
+
+        await Share.share({
+          title: 'Last Balance PDF',
+          text: `Last Balance Statement for ${customerName}`,
+          url: fileUri.uri,
+          dialogTitle: 'Share Last Balance PDF'
+        });
+
+        return {
+          success: true,
+          message: 'Last Balance PDF shared successfully!'
+        };
+      }
 
         // Attempt to save to filesystem first
         const timestamp = new Date().getTime();

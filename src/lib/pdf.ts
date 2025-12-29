@@ -353,6 +353,14 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
         path: uniqueFileName
       });
 
+      // ADD THESE 5 LINES HERE (after line 354):
+      console.log('=== BILL PDF DEBUG ===');
+      console.log('File written to:', uniqueFileName);
+      console.log('File URI object:', fileUri);
+      console.log('File URI.uri value:', fileUri.uri);
+      console.log('======================');
+
+    
       // Share using the URI
       const { Share } = await import('@capacitor/share');
       await Share.share({
