@@ -1,51 +1,54 @@
-apply plugin: 'com.android.application' 
-apply plugin: 'com.google.gms.google-services'  // Google Services plugin 
- 
-buildscript { 
-    repositories { 
-        google() 
-        jcenter() 
-    } 
-    dependencies { 
-        classpath 'com.google.gms:google-services:4.3.15'  // Google Services plugin 
-    } 
-} 
- 
-android { 
-    compileSdkVersion rootProject.ext.compileSdkVersion 
-    namespace "com.prakashbhai.billbuddy" 
- 
-    defaultConfig { 
-        applicationId "com.prakashbhai.billbuddy" 
-        minSdkVersion rootProject.ext.minSdkVersion 
-        targetSdkVersion rootProject.ext.targetSdkVersion 
-        versionCode 1 
-        versionName "1.0" 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner" 
-    } 
- 
-    // Updated for Capacitor v8 compatibility 
-    compileOptions { 
-        sourceCompatibility JavaVersion.VERSION_17 
-        targetCompatibility JavaVersion.VERSION_17 
-    } 
- 
-    buildTypes { 
-        release { 
-            minifyEnabled false 
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' 
-        } 
-    } 
-} 
- 
-dependencies { 
-    implementation project(':capacitor-android') 
-    implementation project(':capacitor-filesystem') 
-    implementation project(':capacitor-share') 
-    implementation 'androidx.appcompat:appcompat:1.7.0' 
-    implementation 'com.google.android.material:material:1.12.0' 
-    implementation platform('com.google.firebase:firebase-bom:32.3.1') 
-    implementation 'com.google.firebase:firebase-analytics' 
-    implementation 'com.google.firebase:firebase-auth' 
-    implementation 'com.google.android.gms:play-services-auth:20.7.0' 
+apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'  // Google Services plugin
+
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.google.gms:google-services:4.3.15'  // Google Services plugin
+    }
+}
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    namespace "com.prakashbhai.billbuddy"
+
+    defaultConfig {
+        applicationId "com.prakashbhai.billbuddy"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Updated for Capacitor v8 compatibility
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-filesystem')
+    implementation project(':capacitor-share')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation platform('com.google.firebase:firebase-bom:32.3.1')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
 }
