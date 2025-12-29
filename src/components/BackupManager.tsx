@@ -1,10 +1,10 @@
- import { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createBackup, restoreBackup, BackupData } from '@/lib/backup';
 import { useToast } from '@/components/ui/use-toast';
-import { Download, Upload, RefreshCw, FileText } from 'lucide-react';
+import { Download, Upload, RefreshCw, FileText, FolderOpen } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
 export const BackupManager = () => {
@@ -19,7 +19,7 @@ export const BackupManager = () => {
       const result = await createBackup(Capacitor.isNativePlatform());
       if (result.success) {
         toast({
-          title: "Backup Created",
+          title: "✅ Backup Saved",
           description: result.message
         });
       } else {
@@ -47,11 +47,9 @@ export const BackupManager = () => {
 
       setIsLoading(true);
       try {
-        // First, read and preview the backup
         const text = await file.text();
         const backupData: BackupData = JSON.parse(text);
 
-        // Validate backup structure (support both old and new backup formats)
         if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
           throw new Error('Invalid backup file structure');
         }
@@ -84,12 +82,10 @@ export const BackupManager = () => {
 
     setIsLoading(true);
     try {
-      // Validate backup data before proceeding
       if (!previewData.customers || !previewData.bills || !previewData.payments || !previewData.lastBalances) {
         throw new Error('Backup data is corrupted or incomplete');
       }
 
-      // Create a temporary file for restoreBackup function
       const jsonString = JSON.stringify(previewData);
       if (jsonString === 'undefined') {
         throw new Error('Failed to serialize backup data');
@@ -106,7 +102,6 @@ export const BackupManager = () => {
         });
         setShowPreview(false);
         setPreviewData(null);
-        // Reload the page to reflect restored data
         window.location.reload();
       } else {
         throw new Error(result.message);
@@ -132,35 +127,43 @@ export const BackupManager = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4">
               <div>
-                <h3 className="text-sm font-medium">Backup Operations</h3>
+                <h3 className="text-sm font-medium">Save Backup to Device</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create comprehensive backups or restore from existing backup files
+                  Create comprehensive backups and save them directly to your device
                 </p>
                 {Capacitor.isNativePlatform() && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Backups are automatically shared. Save them to Downloads, Drive, or any accessible location.
-                  </p>
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start gap-2">
+                      <FolderOpen className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div className="text-xs text-blue-700 dark:text-blue-300">
+                        <p className="font-semibold mb-1">Backup Location:</p>
+                        <p>Backups are saved to <strong>Documents/</strong> folder on your device.</p>
+                        <p className="mt-1">You can access them using any file manager app.</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
               <Button
                 onClick={handleCreateBackup}
                 disabled={isLoading}
+                className="w-full"
               >
                 {isLoading ? (
                   <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Create Backup
+                {isLoading ? 'Creating Backup...' : 'Create & Save Backup'}
               </Button>
             </div>
 
             <div className="border rounded-lg p-4">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h4 className="font-medium mb-2">Upload Backup File</h4>
+                <h4 className="font-medium mb-2">Restore from Backup</h4>
                 <p className="text-sm text-muted-foreground mb-4">
                   Select a backup file (.json) to preview and restore your data
                 </p>
@@ -177,47 +180,47 @@ export const BackupManager = () => {
       {/* Preview Dialog */}
       {showPreview && previewData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-2xl w-full mx-4 p-6">
             <h3 className="text-lg font-semibold mb-4">Backup Preview</h3>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-600">Created</p>
+                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Created</p>
                   <p className="text-sm">{new Date(previewData.createdAt).toLocaleString()}</p>
                 </div>
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-600">Version</p>
+                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Version</p>
                   <p className="text-sm">{previewData.version}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-sm font-medium text-blue-600">Customers</p>
+                <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Customers</p>
                   <p className="text-lg font-semibold">{previewData.customers.length}</p>
                 </div>
-                <div className="bg-green-50 p-3 rounded">
-                  <p className="text-sm font-medium text-green-600">Bills</p>
+                <div className="bg-green-50 dark:bg-green-950 p-3 rounded">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Bills</p>
                   <p className="text-lg font-semibold">{previewData.bills.length}</p>
                 </div>
-                <div className="bg-purple-50 p-3 rounded">
-                  <p className="text-sm font-medium text-purple-600">Payments</p>
+                <div className="bg-purple-50 dark:bg-purple-950 p-3 rounded">
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Payments</p>
                   <p className="text-lg font-semibold">{previewData.payments.length}</p>
                 </div>
-                <div className="bg-orange-50 p-3 rounded">
-                  <p className="text-sm font-medium text-orange-600">Balances</p>
+                <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded">
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Balances</p>
                   <p className="text-lg font-semibold">{previewData.lastBalances.length}</p>
                 </div>
-                <div className="bg-green-50 p-3 rounded">
-                  <p className="text-sm font-medium text-green-600">Items</p>
+                <div className="bg-green-50 dark:bg-green-950 p-3 rounded">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Items</p>
                   <p className="text-lg font-semibold">{previewData.items?.length || 0}</p>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded">
-                <h4 className="font-medium text-yellow-800 mb-2">⚠️ Warning</h4>
-                <p className="text-sm text-yellow-700">
+              <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded">
+                <h4 className="font-medium text-yellow-800 dark:text-yellow-400 mb-2">⚠️ Warning</h4>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Restoring this backup will replace all current data. This action cannot be undone.
                   Consider creating a backup of your current data first.
                 </p>

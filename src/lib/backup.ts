@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 import { getCustomers, getBills, getPayments, getAllCustomerBalances, getItems, getRateHistory, getBusinessAnalytics } from './storage';
 import { getRecycleBin } from './recycle-bin';
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, BusinessAnalytics, RecycledItem } from '@/types';
@@ -30,16 +29,7 @@ export interface BackupResult {
 }
 
 /**
- * Creates a comprehensive backup of all app data
- * Stores:
- * 1. All customers with their complete bill history (including edited bills)
- * 2. All payments with dates and payment methods
- * 3. Last balance for all customers
- * 4. All items from the item master
- * 5. Item rate history
- * 6. Business analytics data
- * 7. Recycle bin data
- * 8. Sync status and metadata
+ * Creates a comprehensive backup of all app data and saves to local storage
  */
 export const createBackup = async (forceShare: boolean = false): Promise<BackupResult> => {
   try {
@@ -89,92 +79,51 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
     if (Capacitor.isNativePlatform()) {
       const base64Data = await blobToBase64(blob);
 
-      if (forceShare) {
-        // Write to filesystem first
-        const timestamp = new Date().getTime();
-        const uniqueFileName = `backup_force_${timestamp}_${fileName}`;
-
-        await Filesystem.writeFile({
-          path: uniqueFileName,
-          data: base64Data,
-          directory: Directory.Cache
-        });
-
-        const fileUri = await Filesystem.getUri({
-          path: uniqueFileName,
-          directory: Directory.Cache
-        });
-        // ADD THESE 5 LINES HERE (after line 354):
-      console.log('=== BILL PDF DEBUG ===');
-      console.log('File written to:', uniqueFileName);
-      console.log('File URI object:', fileUri);
-      console.log('File URI.uri value:', fileUri.uri);
-      console.log('======================');
-
-        await Share.share({
-          title: 'Bill Buddy Backup',
-          text: 'Complete backup of all customer data, bills, payments, and balances',
-          url: fileUri.uri,
-          dialogTitle: 'Share Backup File'
-        });
-
-        return {
-          success: true,
-          message: 'Backup shared successfully!'
-        };
-      }
-
-      // Mobile: Attempt to save to device storage first
       try {
+        // Save to Documents directory (user-accessible)
         await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
-          directory: Directory.Cache
+          directory: Directory.Documents
         });
 
-        // Share the file
         const fileUri = await Filesystem.getUri({
           path: fileName,
-          directory: Directory.Cache
+          directory: Directory.Documents
         });
 
-        await Share.share({
-          title: 'Bill Buddy Backup',
-          text: 'Complete backup of all customer data, bills, payments, and balances',
-          url: fileUri.uri,
-          dialogTitle: 'Save Backup File'
-        });
+        console.log('Backup saved successfully to Documents:', fileUri.uri);
 
         return {
           success: true,
-          message: 'Backup created and shared successfully',
+          message: `Backup saved to Documents folder!\n\nFile: ${fileName}\n\nLocation: Documents/${fileName}`,
           filePath: fileUri.uri
         };
-      } catch (filesystemError) {
-        console.error('Filesystem backup failed, attempting force share:', filesystemError);
-        // Fallback: write to unique file and share
-        const timestamp2 = new Date().getTime();
-        const uniqueFileName2 = `backup_fallback_${timestamp2}_${fileName}`;
+      } catch (error) {
+        console.error('Failed to save to Documents, trying Cache:', error);
+        
+        // Fallback: Try Cache directory
+        try {
+          await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache
+          });
 
-        await Filesystem.writeFile({
-          path: uniqueFileName2,
-          data: base64Data,
-          directory: Directory.Cache
-        });
+          const fileUri = await Filesystem.getUri({
+            path: fileName,
+            directory: Directory.Cache
+          });
 
-        const fileUri2 = await Filesystem.getUri({
-          path: uniqueFileName2,
-          directory: Directory.Cache
-        });
-
-        await Share.share({
-          title: 'Bill Buddy Backup',
-          text: 'Complete backup of all customer data, bills, payments, and balances',
-          url: fileUri2.uri,
-          dialogTitle: 'Share Backup File'
-        });
-
-        return { success: true, message: 'Backup shared successfully!' };
+          return {
+            success: true,
+            message: `Backup saved to Cache folder!\n\nFile: ${fileName}`,
+            filePath: fileUri.uri
+          };
+        } catch (cacheError) {
+          console.error('Cache save also failed:', cacheError);
+          throw new Error('Failed to save backup to device storage');
+        }
       }
     } else {
       // Web: Download file
@@ -196,7 +145,7 @@ export const createBackup = async (forceShare: boolean = false): Promise<BackupR
     console.error('Backup creation failed:', error);
     return {
       success: false,
-      message: 'Failed to create backup'
+      message: `Failed to create backup: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 };
@@ -209,7 +158,7 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     const text = await file.text();
     const backupData: BackupData = JSON.parse(text);
 
-    // Validate backup structure (support both old and new backup formats)
+    // Validate backup structure
     if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
       throw new Error('Invalid backup file structure');
     }
@@ -217,16 +166,13 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     // Clear existing data and restore from backup
     localStorage.clear();
 
-    // Restore core data (always present)
+    // Restore core data
     localStorage.setItem('prakash_customers', JSON.stringify(backupData.customers));
     localStorage.setItem('prakash_bills', JSON.stringify(backupData.bills));
     localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
 
-    // Restore items and rate history (may be empty arrays for older backups)
+    // Restore items
     const restoredItems = backupData.items || [];
-
-    // Extract items from bills and add them to item master if they don't exist
-    // This ensures that items referenced in bills are available in the item master
     const itemsFromBills: ItemMaster[] = [];
     const existingItemNames = new Set(restoredItems.map(item => item.name.toLowerCase()));
 
@@ -235,12 +181,11 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
         const itemName = billItem.itemName.trim();
         const itemNameLower = itemName.toLowerCase();
 
-        // If this item doesn't exist in the restored items, create it
         if (!existingItemNames.has(itemNameLower)) {
           const newItem: ItemMaster = {
             id: `restored_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             name: itemName,
-            type: 'variable', // Default to variable since we don't know the pricing type
+            type: 'variable',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
@@ -250,7 +195,6 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
       });
     });
 
-    // Combine restored items with items extracted from bills
     const allItems = [...restoredItems, ...itemsFromBills];
     localStorage.setItem('prakash_items', JSON.stringify(allItems));
 
@@ -258,17 +202,14 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
       localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
     }
 
-    // Restore business analytics (new in v3.0)
     if (backupData.businessAnalytics) {
       localStorage.setItem('prakash_business_analytics', JSON.stringify(backupData.businessAnalytics));
     }
 
-    // Restore recycle bin data (new in v3.0)
     if (backupData.recycleBin) {
       localStorage.setItem('recycle_bin', JSON.stringify(backupData.recycleBin));
     }
 
-    // Restore metadata (new in v3.0)
     if (backupData.dataVersion) {
       localStorage.setItem('prakash_data_version', backupData.dataVersion);
     }
@@ -284,8 +225,6 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     if (backupData.syncConflicts) {
       localStorage.setItem('prakash_sync_conflicts', JSON.stringify(backupData.syncConflicts));
     }
-
-    // Note: lastBalances is computed from bills and payments, so we don't store it directly
 
     return {
       success: true,
@@ -308,7 +247,6 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove the data URL prefix (data:application/json;base64,)
       const base64 = result.split(',')[1];
       resolve(base64);
     };
