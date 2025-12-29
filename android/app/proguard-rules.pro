@@ -19,3 +19,13 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+  
+# Keep Capacitor Core  
+-keep class com.getcapacitor.** { *; }  
+-keepclassmembers class * extends com.getcapacitor.Plugin {  
+    @com.getcapacitor.annotation.CapacitorPlugin public *;  
+}  
+  
+# Keep Capacitor Plugins  
+-keep class com.capacitorjs.plugins.** { *; }  
+-keep interface com.capacitorjs.plugins.** { *; } 
