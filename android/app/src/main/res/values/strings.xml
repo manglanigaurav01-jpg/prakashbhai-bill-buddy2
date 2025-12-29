@@ -1,7 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Bill Buddy</string>
-    <string name="title_activity_main">Bill Buddy</string>
-    <string name="package_name">com.manglanigaurav01.prakashbhaibillbuddy</string>
-    <string name="custom_url_scheme">com.manglanigaurav01.prakashbhaibillbuddy</string>
+    <string name="app_name">Prakashbhai Bill Manager</string>
+    <string name="title_activity_main">Prakashbhai Bill Manager</string>
+    <string name="package_name">com.prakashbhai.billbuddy</string>
+    <string name="custom_url_scheme">com.prakashbhai.billbuddy</string>
 </resources>
