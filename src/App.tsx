@@ -45,7 +45,7 @@ const App = () => {
     initTheme();
     
     // Setup error logging (without Sentry DSN for now - can be added via env)
-    initErrorLogging(process.env.VITE_SENTRY_DSN);
+    initErrorLogging(import.meta.env.VITE_SENTRY_DSN);
     
     // Setup global error handler
     const cleanup = setupGlobalErrorHandler();
