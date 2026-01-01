@@ -7,6 +7,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { initTheme } from "@/lib/theme-manager";
 import { setupGlobalErrorHandler, initErrorLogging } from "@/lib/error-logger";
+import { useBackButton } from "@/hooks/useBackButton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 // Lazy load components for code splitting - Updated for CI/CD trigger
 const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -38,6 +42,7 @@ type View = 'dashboard' | 'createBill' | 'customers' | 'balance' | 'amountTracke
 
 const App = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   // Initialize app features
   useEffect(() => {
@@ -52,6 +57,31 @@ const App = () => {
     
     return cleanup;
   }, []);
+
+  // Handle Android back button
+  useBackButton({
+    onBackButton: () => {
+      if (currentView === 'dashboard') {
+        // On dashboard, show exit confirmation
+        setShowExitDialog(true);
+        return true; // Prevent default
+      } else {
+        // On any other view, go back to dashboard
+        setCurrentView('dashboard');
+        return true; // Prevent default
+      }
+    },
+    enabled: true
+  });
+
+  const handleExitApp = () => {
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.exitApp();
+    } else {
+      // For web, try to close the window
+      window.close();
+    }
+  };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view as View);
@@ -102,6 +132,26 @@ const App = () => {
           <Sonner />
           <OfflineIndicator />
           {renderView()}
+
+          {/* Exit Confirmation Dialog */}
+          <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Exit App?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to exit the application?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowExitDialog(false)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleExitApp}>
+                  Exit
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

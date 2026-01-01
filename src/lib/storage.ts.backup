@@ -102,24 +102,6 @@ export const deleteCustomer = (customerId: string): void => {
   window.dispatchEvent(new Event('storage'));
 };
 
-export const updateCustomer = (customerId: string, updates: Partial<Customer>): Customer | null => {
-  const customers = getCustomers();
-  const index = customers.findIndex(c => c.id === customerId);
-  
-  if (index === -1) return null;
-  
-  const updatedCustomer: Customer = {
-    ...customers[index],
-    ...updates,
-  };
-  
-  customers[index] = updatedCustomer;
-  localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
-  window.dispatchEvent(new Event('storage'));
-  
-  return updatedCustomer;
-};
-
 // Bill management
 export const getBills = (): Bill[] => {
   const data = localStorage.getItem(STORAGE_KEYS.BILLS);
@@ -557,4 +539,3 @@ export const searchItems = (query: string): ItemMaster[] => {
     return a.name.localeCompare(b.name);
   });
 };
-

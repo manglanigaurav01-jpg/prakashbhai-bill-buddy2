@@ -3,7 +3,6 @@ export interface Customer {
   id: string;
   name: string;
   createdAt: string;
-  balance?: number;
 }
 
 export interface BillItem {
@@ -60,7 +59,6 @@ export interface Customer {
   id: string;
   name: string;
   createdAt: string;
-  balance?: number;
 }
 
 export interface ItemMaster {
