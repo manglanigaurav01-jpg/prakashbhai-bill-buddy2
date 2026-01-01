@@ -307,6 +307,9 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                 <Button variant="outline" onClick={() => setSortAsc(s => !s)}>
                   {sortAsc ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </Button>
+              <Button variant="outline" onClick={clearFilters} title="Clear all filters">
+                <X className="w-4 h-4" />
+              </Button>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
