@@ -14,9 +14,8 @@ import { Bill, BillItem, Customer } from '@/types';
 import { shareViaWhatsApp, createBillMessage } from '@/lib/whatsapp';
 import { SwipeableItem } from '@/components/SwipeableItem';
 import { hapticMedium, hapticSuccess, hapticError } from '@/lib/haptics';
-import { generateBillPDF } from '@/lib/pdf'; // Added import
-import { Capacitor } from '@capacitor/core'; // Added import
-
+import { generateBillPDF } from '@/lib/pdf';
+import { Capacitor } from '@capacitor/core';
 
 interface EditBillsProps {
   onNavigate: (view: string) => void;
@@ -38,17 +37,14 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // virtualization state (no external deps)
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const [containerHeight] = useState<number>(600);
   const [startIndex, setStartIndex] = useState<number>(0);
 
-  // Async loader: try IndexedDB (async-storage) first, fallback to storage.ts
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      // try async-storage
       try {
         const mod = await import('@/lib/async-storage');
         const billsFromIdb = await mod.asyncGetItem<Bill[]>('prakash_bills');
@@ -59,11 +55,8 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
           return;
         }
       } catch (e) {
-        // ignore - fallback below
         console.warn('async-storage not available or failed, falling back to synchronous storage', e);
       }
-
-      // fallback to existing synchronous storage
       const allBills = getBills();
       const allCustomers = getCustomers();
       setBills(allBills);
@@ -78,7 +71,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     loadData();
-    // Add event listener for storage changes
     window.addEventListener('storage', loadData);
     return () => window.removeEventListener('storage', loadData);
   }, []);
@@ -86,14 +78,10 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   const filteredSortedBills = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = bills.filter(b => {
-      // Text search
       const matchesText = !q || b.customerName.toLowerCase().includes(q) || b.items.some(i => i.itemName.toLowerCase().includes(q));
       if (!matchesText) return false;
-      
-      // Date range filter
       const billDate = new Date(b.date);
       if (dateFrom && billDate < dateFrom) return false;
-      
       return true;
     });
     const sorted = [...filtered].sort((a, b) => {
@@ -108,11 +96,17 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
       }
     });
     return sorted;
+  }, [bills, query, sortKey, sortAsc, dateFrom]);
 
-  // Expose a small helper to refresh lists after mutations
+  const clearFilters = () => {
+    setQuery('');
+    setDateFrom(null);
+    setSortKey('date');
+    setSortAsc(false);
+  };
+
   const refreshAfterChange = async () => {
     await loadData();
-    // reset virtual window to start
     setStartIndex(0);
   };
 
@@ -180,7 +174,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     }
   };
 
-  // Long press detection for delete
   const longPressTimers = useRef<{ [key: string]: any }>({});
   const LONG_PRESS_MS = 600;
 
@@ -188,6 +181,7 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     if (longPressTimers.current[id]) clearTimeout(longPressTimers.current[id]);
     longPressTimers.current[id] = setTimeout(() => setShowDeleteId(id), LONG_PRESS_MS);
   };
+
   const _handlePressEnd = (id: string) => {
     if (longPressTimers.current[id]) {
       clearTimeout(longPressTimers.current[id]);
@@ -204,7 +198,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     if (!showDeleteId) return;
     try {
       deleteBill(showDeleteId);
-      // reload async-aware
       refreshAfterChange();
       hapticSuccess();
       toast({ title: 'Bill deleted', description: 'The bill has been removed' });
@@ -266,7 +259,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => onNavigate('dashboard')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -278,7 +270,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Search and Filters */}
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex flex-col md:flex-row gap-3">
@@ -304,9 +295,9 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                 <Button variant="outline" onClick={() => setSortAsc(s => !s)}>
                   {sortAsc ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </Button>
-              <Button variant="outline" onClick={clearFilters} title="Clear all filters">
-                <X className="w-4 h-4" />
-              </Button>
+                <Button variant="outline" onClick={clearFilters} title="Clear all filters">
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -314,13 +305,10 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                 <Label className="text-sm mb-1 block">From Date</Label>
                 <DatePicker date={dateFrom || undefined} onDateChange={(d) => setDateFrom(d || null)} placeholder="Start date" />
               </div>
-              <div>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Debug Info */}
         {bills.length > 0 && (
           <Card>
             <CardContent className="p-4">
@@ -331,7 +319,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
           </Card>
         )}
 
-        {/* Bills List - virtualized */}
         <div>
           {filteredSortedBills.length === 0 ? (
             <Card>
@@ -345,12 +332,11 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
               onScroll={(e) => {
                 const el = e.currentTarget as HTMLDivElement;
                 const scrollTop = el.scrollTop;
-                const ITEM_HEIGHT = 96; // estimated per-card height in px
+                const ITEM_HEIGHT = 96;
                 const newStart = Math.floor(scrollTop / ITEM_HEIGHT);
                 if (newStart !== startIndex) setStartIndex(newStart);
               }}
             >
-              {/** virtual rendering calculations **/}
               {(() => {
                 const ITEM_HEIGHT = 96;
                 const overscan = 6;
@@ -386,7 +372,7 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                                   <Button size="sm" variant="outline" onClick={async () => {
                                     if (Capacitor.isNativePlatform()) {
                                       try {
-                                        const result = await generateBillPDF(bill, true); // Force share the bill PDF
+                                        const result = await generateBillPDF(bill, true);
                                         if (result.success) {
                                           toast({
                                             title: 'Bill Shared',
@@ -408,9 +394,8 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                                         });
                                       }
                                     } else {
-                                      // Fallback for web or if not a native platform, maybe still use WhatsApp or offer download
                                       const message = createBillMessage(bill);
-                                      await shareViaWhatsApp('', message); // Keep original WhatsApp share for web
+                                      await shareViaWhatsApp('', message);
                                       toast({
                                         title: 'Bill Shared (Web)',
                                         description: 'Bill details shared via WhatsApp.',
@@ -437,7 +422,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
           )}
         </div>
 
-        {/* Edit Dialog */}
         <Dialog open={!!editing} onOpenChange={(open) => { if (!open) setEditing(null); }}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -514,7 +498,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
           </DialogContent>
         </Dialog>
 
-        {/* Delete confirm */}
         <Dialog open={!!showDeleteId} onOpenChange={(open) => { if (!open) setShowDeleteId(null); }}>
           <DialogContent>
             <DialogHeader>
@@ -531,4 +514,3 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     </div>
   );
 };
-}

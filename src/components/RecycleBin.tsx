@@ -5,6 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2, RotateCcw, Clock, Package, FileText, DollarSign, ArrowLeft } from 'lucide-react';
 import { getRecycleBin, restoreFromRecycleBin, permanentlyDelete, clearRecycleBin, getDaysRemaining, cleanupOldItems, RecycledItem } from '@/lib/recycle-bin';
 import { useToast } from '@/hooks/use-toast';
+import { SwipeableItem } from '@/components/SwipeableItem';
 
 interface RecycleBinProps {
   onNavigate: (view: string) => void;
@@ -87,13 +88,11 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 md:p-6 relative overflow-hidden">
-      {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Modern Header */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-12 gap-6">
           <div className="flex items-center gap-6 animate-fade-in">
             <Button
@@ -150,105 +149,104 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
               )}
             </div>
           </CardHeader>
-        <CardContent>
-          {recycleBin.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Trash2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Recycle bin is empty</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recycleBin.map((item) => {
-                const daysRemaining = getDaysRemaining(item.deletedAt);
-                return (
-                  <SwipeableItem
-                    key={item.id}
-                    onEdit={() => {}}
-                    onDelete={() => setConfirmDelete(item.id)}
-                  >
-                  <div
- 
-                    className="flex items-center justify-between p-4 border rounded-lg bg-card"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="text-muted-foreground">
-                        {getIcon(item.type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{item.displayName}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">
-                            {getTypeLabel(item.type)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
-                          </span>
+          <CardContent>
+            {recycleBin.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Trash2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Recycle bin is empty</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recycleBin.map((item) => {
+                  const daysRemaining = getDaysRemaining(item.deletedAt);
+                  return (
+                    <SwipeableItem
+                      key={item.id}
+                      onEdit={() => {}}
+                      onDelete={() => setConfirmDelete(item.id)}
+                    >
+                      <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="text-muted-foreground">
+                            {getIcon(item.type)}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{item.displayName}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">
+                                {getTypeLabel(item.type)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestore(item.id)}
+                            className="gap-1"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Restore
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setConfirmDelete(item.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRestore(item.id)}
-                        className="gap-1"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Restore
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setConfirmDelete(item.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                  </div>
-                  </SwipeableItem>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
+                    </SwipeableItem>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         <AlertDialog open={confirmClearAll} onOpenChange={setConfirmClearAll}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear Recycle Bin?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete all {recycleBin.length} item(s) in the recycle bin. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground">
-              Delete All
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear Recycle Bin?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all {recycleBin.length} item(s) in the recycle bin. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground">
+                Delete All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this item. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmDelete && handlePermanentDelete(confirmDelete)}
-              className="bg-destructive text-destructive-foreground"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this item. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => confirmDelete && handlePermanentDelete(confirmDelete)}
+                className="bg-destructive text-destructive-foreground"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 };
