@@ -23,7 +23,7 @@ export interface CORSResult {
 
 export class CORSHandler {
   private static readonly DEFAULT_CONFIG: CORSConfig = {
-    allowedOrigins: ['http://localhost:3000', 'https://bill-buddy-app.web.app', 'https://bill-buddy-app.firebaseapp.com'],
+    allowedOrigins: ['http://localhost:3000', ],
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',

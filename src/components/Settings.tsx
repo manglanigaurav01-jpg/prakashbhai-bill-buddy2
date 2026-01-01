@@ -4,8 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, ArrowLeft, Moon, Sun, Trash2, User as UserIcon, Shield, Database, Cloud, Settings as SettingsIcon, Lock, RefreshCw } from "lucide-react";
-import { signInWithGoogle, signOutUser, onAuthStateChanged } from '@/lib/auth';
-import { AutoSync } from "./AutoSync";
 import { useToast } from "@/hooks/use-toast";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
@@ -13,14 +11,12 @@ import { BackupManager } from "./BackupManager";
 import { isPasswordSet, setPassword, verifyPassword, changePassword, removePassword } from '@/components/password';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { initializeAutoBackup } from '@/lib/auto-backup';
 import { useTheme } from '@/lib/theme-manager';
-import type { User } from 'firebase/auth';
+
 import { Separator } from "@/components/ui/separator";
 interface SettingsProps {
   onNavigate: (view: string) => void;
 }
-
 export const Settings = ({ onNavigate }: SettingsProps) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { effectiveTheme, toggleTheme } = useTheme();
@@ -33,98 +29,13 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-
-
-
-  // Monitor auth state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged((user: User | null) => {
-      setCurrentUser(user);
-      if (user) {
-        // Initialize auto backup when user signs in
-        initializeAutoBackup();
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleGoogleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      // Add a safety timeout to ensure loading state is reset
-      const timeoutId = setTimeout(() => {
-        setIsSigningIn(false);
-        toast({
-          title: "Sign-in timeout",
-          description: "The sign-in process is taking too long. Please try again.",
-          variant: "destructive",
-        });
-      }, 90000); // 90 second safety timeout
-
-      const result = await signInWithGoogle();
-      
-      clearTimeout(timeoutId);
-      
-      if (result.success) {
-        toast({
-          title: "Signed in successfully",
-          description: "Your account is now connected. Monthly backups will be automatic.",
-        });
-        initializeAutoBackup();
-      } else {
-        toast({
-          title: "Sign in failed",
-          description: result.error || "Failed to sign in with Google",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('Sign-in error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sign in",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      const result = await signOutUser();
-      if (result.success) {
-        toast({
-          title: "Signed out",
-          description: "You have been signed out successfully.",
-        });
-      } else {
-        toast({
-          title: "Sign out failed",
-          description: result.error || "Failed to sign out",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sign out",
-        variant: "destructive",
-      });
-    }
-  };
-
   const toggleDarkMode = () => {
     toggleTheme();
-
     toast({
       title: `${!isDarkMode ? 'Dark' : 'Light'} mode enabled`,
       description: `Switched to ${!isDarkMode ? 'dark' : 'light'} theme.`,
     });
   };
-
   const clearAllData = async () => {
     try {
       // Clear localStorage data but preserve theme
@@ -133,7 +44,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
       if (currentTheme) {
         localStorage.setItem('theme', currentTheme);
       }
-      
       // Clear PDF files on mobile
       if (Capacitor.isNativePlatform()) {
         try {
@@ -141,7 +51,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
             path: '',
             directory: 'DOCUMENTS' as Directory
           });
-          
           // Delete all PDF files
           for (const file of files.files) {
             if (file.name.toLowerCase().endsWith('.pdf')) {
@@ -155,21 +64,17 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
           console.log('No files to clear or error accessing files:', error);
         }
       }
-      
       toast({
         title: "Data Cleared",
         description: "All app data and PDFs have been successfully cleared.",
       });
-      
       // Close dialog and navigate back
       setIsConfirmOpen(false);
       setShowPasswordDialog(false);
       setPasswordInput('');
       onNavigate('dashboard');
-      
       // Refresh the page to reset the app state
       setTimeout(() => window.location.reload(), 1000);
-      
     } catch (error) {
       console.error('Error clearing data:', error);
       toast({
@@ -179,7 +84,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
       });
     }
   };
-
   const handleClearDataClick = () => {
     if (isPasswordSet()) {
       setPasswordAction('confirmClear');
@@ -188,7 +92,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
       setIsConfirmOpen(true);
     }
   };
-
   const handlePasswordDialogSubmit = () => {
     switch (passwordAction) {
       case 'confirmClear':
@@ -237,23 +140,18 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
       }
     }
   };
-
   const resetPasswordFields = () => {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmNewPassword('');
     setPasswordInput('');
   };
-
-
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 md:p-6 relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Modern Header */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-12 gap-6">
@@ -285,7 +183,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
             </span>
           </div>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Settings */}
           <div className="lg:col-span-2 space-y-6">
@@ -321,7 +218,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 </div>
               </CardContent>
             </Card>
-
             {/* Security Settings */}
             <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm border-primary/20">
               <CardHeader className="pb-4">
@@ -388,15 +284,9 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 )}
               </CardContent>
             </Card>
-
-
-
             {/* Enhanced Backup System */}
             <BackupManager />
-
-
           </div>
-
           {/* Right Column - Quick Actions */}
           <div className="space-y-6">
             {/* Data Management */}
@@ -428,7 +318,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 </div>
               </CardContent>
             </Card>
-
             {/* Recycle Bin Navigation */}
             <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
@@ -458,7 +347,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 </Button>
               </CardContent>
             </Card>
-
             {/* Quick Info Card */}
             <Card className="shadow-xl border-2 bg-gradient-to-br from-primary/5 to-accent/5 backdrop-blur-sm">
               <CardContent className="pt-6">
@@ -479,7 +367,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
             </Card>
           </div>
         </div>
-
         {/* Confirmation Dialog */}
         <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
           <DialogContent className="sm:max-w-md">
@@ -500,7 +387,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
                 <strong className="text-destructive">This action cannot be undone.</strong>
               </DialogDescription>
             </DialogHeader>
-            
             <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
@@ -519,7 +405,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
         {/* Password Dialog */}
         <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
           <DialogContent className="sm:max-w-md">
