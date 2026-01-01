@@ -117,7 +117,12 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
   useEffect(() => {
     const savedScroll = sessionStorage.getItem('dashboardScroll');
     if (savedScroll && containerRef.current) {
-      containerRef.current.scrollTop = parseInt(savedScroll, 10);
+      // Use setTimeout to ensure content is fully rendered before scrolling
+      setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = parseInt(savedScroll, 10);
+        }
+      }, 100);
     }
 
     return () => {
@@ -199,3 +204,4 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
     </div>
   );
 };
+
