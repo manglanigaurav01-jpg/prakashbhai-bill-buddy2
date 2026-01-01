@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { getCustomers, getPaymentHistory, deletePayment, saveCustomer } from "@/lib/storage";
 import { Customer, Payment } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { SwipeableItem } from '@/components/SwipeableItem';
 
 interface AmountTrackerProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'amount-tracker' | 'dashboard' | 'total-business' | 'last-balance') => void;
@@ -28,6 +29,7 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
+  const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,7 +63,6 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
       return;
     }
 
-    // Update the recordPayment function to accept a date and payment method
     const { savePayment } = await import('@/lib/storage');
     savePayment({
       customerId: selectedCustomer.id,
@@ -81,13 +82,19 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
     setAmount("");
   };
 
-  const handleDeletePayment = (paymentId: string) => {
-    deletePayment(paymentId);
+  const handleDelete = (paymentId: string) => {
+    setShowDeleteId(paymentId);
+  };
+
+  const confirmDelete = () => {
+    if (!showDeleteId) return;
+    deletePayment(showDeleteId);
     loadPaymentHistory();
     toast({
       title: "Payment Deleted",
       description: "Payment record has been deleted",
     });
+    setShowDeleteId(null);
   };
 
   const CustomerSearchPopover = ({
@@ -120,7 +127,6 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
                 const value = e.target.value;
                 setSearchQuery(value);
                 if (value && !open) setOpen(true);
-                // Clear selection if user is typing
                 if (selectedCustomer && value !== selectedCustomer.name) {
                   onCustomerSelect(null);
                 }
@@ -196,7 +202,6 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Record Payment Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -277,7 +282,6 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
             </CardContent>
           </Card>
 
-          {/* Payment History */}
           <Card>
             <CardHeader>
               <CardTitle>Payment History</CardTitle>
@@ -288,34 +292,29 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
                   <p className="text-muted-foreground text-center py-4">No payment records found</p>
                 ) : (
                   paymentHistory.map(payment => (
-                    <div
+                    <SwipeableItem
                       key={payment.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      onDelete={() => handleDelete(payment.id)}
                     >
-                      <div>
-                        <div className="font-medium">{payment.customerName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {(() => {
-                            const date = new Date(payment.date);
-                            const day = date.getDate().toString().padStart(2, '0');
-                            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}/${month}/${year}`;
-                          })()}
-                          {payment.paymentMethod && ` • ${payment.paymentMethod}`}
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                        <div>
+                          <div className="font-medium">{payment.customerName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {(() => {
+                              const date = new Date(payment.date);
+                              const day = date.getDate().toString().padStart(2, '0');
+                              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                              const year = date.getFullYear();
+                              return `${day}/${month}/${year}`;
+                            })()}
+                            {payment.paymentMethod && ` • ${payment.paymentMethod}`}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-accent">₹{payment.amount.toFixed(2)}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-accent">₹{payment.amount.toFixed(2)}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeletePayment(payment.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                    </SwipeableItem>
                   ))
                 )}
               </div>
@@ -323,7 +322,6 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
           </Card>
         </div>
 
-        {/* Add New Customer Dialog */}
         <Dialog open={showNewCustomerDialog} onOpenChange={setShowNewCustomerDialog}>
           <DialogContent>
             <DialogHeader>
@@ -383,6 +381,22 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
                 }}
               >
                 Add Customer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!showDeleteId} onOpenChange={(open) => { if (!open) setShowDeleteId(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Payment</DialogTitle>
+              <DialogDescription>Are you sure you want to delete this payment record?</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteId(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
               </Button>
             </DialogFooter>
           </DialogContent>
