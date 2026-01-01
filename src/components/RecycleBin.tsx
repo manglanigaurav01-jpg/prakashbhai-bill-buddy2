@@ -201,6 +201,7 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
                       </Button>
                     </div>
                   </div>
+                  </SwipeableItem>
                 );
               })}
             </div>
