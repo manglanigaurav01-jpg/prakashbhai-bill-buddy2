@@ -21,11 +21,11 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCustomers = searchQuery
+  const filteredCustomers = searchQuery.trim()
     ? customers.filter(customer =>
         customer.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : customers;
+    : [];
 
   const handleCustomerSelect = (customer: Customer) => {
     onCustomerSelect(customer);
@@ -152,3 +152,4 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     </Popover>
   );
 };
+

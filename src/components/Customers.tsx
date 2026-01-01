@@ -252,9 +252,11 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
                                     ? 'bg-muted/50 cursor-default' 
                                     : 'hover:bg-muted/50 active:bg-muted cursor-pointer'
                                 }`}
-                                onTouchStart={(e) => handleTouchStart(e, customer)}
-                                onTouchMove={(e) => handleTouchMove(e, customer)}
-                                onTouchEnd={(e) => handleTouchEnd(e, customer)}
+                                {...(!hasBalance && {
+                                  onTouchStart: (e) => handleTouchStart(e, customer),
+                                  onTouchMove: (e) => handleTouchMove(e, customer),
+                                  onTouchEnd: (e) => handleTouchEnd(e, customer)
+                                })}
                               >
                                 <div className="flex items-center gap-3 flex-1">
                                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">

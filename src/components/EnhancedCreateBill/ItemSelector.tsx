@@ -23,11 +23,11 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredItems = searchQuery
+  const filteredItems = searchQuery.trim()
     ? items.filter(item =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : items;
+    : [];
 
   const handleItemSelect = (selectedItem: any) => {
     onItemSelect(selectedItem);
@@ -158,3 +158,4 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
     </Popover>
   );
 };
+
