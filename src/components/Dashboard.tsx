@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Calculator, CreditCard, TrendingUp, Package, Settings as SettingsIcon, Edit3, Sun, Moon, BarChart, Search, RecycleIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useTheme } from "@/lib/theme-manager";
 
@@ -112,10 +112,24 @@ const menuItems: MenuItem[] = [
 export const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { effectiveTheme, toggleTheme } = useTheme();
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('dashboardScroll');
+    if (savedScroll && containerRef.current) {
+      containerRef.current.scrollTop = parseInt(savedScroll, 10);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        sessionStorage.setItem('dashboardScroll', containerRef.current.scrollTop.toString());
+      }
+    };
+  }, []);
   const isDarkMode = effectiveTheme === 'dark';
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div ref={containerRef} className="min-h-screen bg-background p-4 md:p-8 overflow-auto">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
           <div className="text-center md:text-left">

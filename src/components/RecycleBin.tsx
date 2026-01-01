@@ -161,8 +161,13 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
               {recycleBin.map((item) => {
                 const daysRemaining = getDaysRemaining(item.deletedAt);
                 return (
-                  <div
+                  <SwipeableItem
                     key={item.id}
+                    onEdit={() => {}}
+                    onDelete={() => setConfirmDelete(item.id)}
+                  >
+                  <div
+ 
                     className="flex items-center justify-between p-4 border rounded-lg bg-card"
                   >
                     <div className="flex items-center gap-3 flex-1">
@@ -247,5 +252,6 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
       </AlertDialog>
       </div>
     </div>
+                  </SwipeableItem>
   );
 };

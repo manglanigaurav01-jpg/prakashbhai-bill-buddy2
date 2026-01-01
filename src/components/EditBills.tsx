@@ -31,7 +31,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
-  const [dateTo, setDateTo] = useState<Date | null>(null);
   const [editing, setEditing] = useState<Bill | null>(null);
   const [editingItems, setEditingItems] = useState<BillItem[]>([]);
   const [editingDate, setEditingDate] = useState<Date>(new Date());
@@ -94,7 +93,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
       // Date range filter
       const billDate = new Date(b.date);
       if (dateFrom && billDate < dateFrom) return false;
-      if (dateTo && billDate > dateTo) return false;
       
       return true;
     });
@@ -110,7 +108,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
       }
     });
     return sorted;
-  }, [bills, query, sortKey, sortAsc, dateFrom, dateTo]);
 
   // Expose a small helper to refresh lists after mutations
   const refreshAfterChange = async () => {
@@ -318,8 +315,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                 <DatePicker date={dateFrom || undefined} onDateChange={(d) => setDateFrom(d || null)} placeholder="Start date" />
               </div>
               <div>
-                <Label className="text-sm mb-1 block">To Date</Label>
-                <DatePicker date={dateTo || undefined} onDateChange={(d) => setDateTo(d || null)} placeholder="End date" />
               </div>
             </div>
           </CardContent>

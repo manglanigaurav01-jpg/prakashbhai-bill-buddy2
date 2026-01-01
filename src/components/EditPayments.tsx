@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, SortAsc, SortDesc, Edit3, Trash2, Save, Plus } from 'lucide-react';
+import { ArrowLeft, Search, SortAsc, SortDesc, Edit3, Trash2, Save, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -271,6 +271,14 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
     );
   };
 
+
+  const clearFilters = () => {
+    setQuery('');
+    setFilterDate(null);
+    setSortKey('date');
+    setSortAsc(false);
+    toast({ title: 'Filters Cleared', description: 'All filters have been reset' });
+  };
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -367,6 +375,9 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
               </Select>
               <Button variant="outline" onClick={() => setSortAsc(s => !s)}>
                 {sortAsc ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+              </Button>
+              <Button variant="outline" onClick={clearFilters} title="Clear all filters">
+                <X className="w-4 h-4" />
               </Button>
             </div>
           </CardContent>

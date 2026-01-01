@@ -8,17 +8,7 @@ import { getCustomers, saveCustomer } from "@/lib/storage";
 import { Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { addToRecycleBin } from "@/lib/recycle-bin";
-import { hapticSuccess, hapticError, hapticMedium } from '@/lib/haptics';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { hapticSuccess, hapticError } from '@/lib/haptics';
 
 interface CustomersProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -29,10 +19,7 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
   const listRef = useRef<HTMLDivElement | null>(null);
   const [startIdx, setStartIdx] = useState(0);
   const [newCustomerName, setNewCustomerName] = useState("");
-  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const { toast } = useToast();
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const longPressTriggered = useRef(false);
 
   useEffect(() => {
     setCustomers(getCustomers());
@@ -83,50 +70,8 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
     }
   };
 
-  const handleLongPressStart = (customer: Customer) => {
-    longPressTriggered.current = false;
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      hapticMedium();
-      setCustomerToDelete(customer);
-    }, 500); // 500ms long press
-  };
 
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
 
-  const handleDeleteCustomer = () => {
-    if (!customerToDelete) return;
-
-    try {
-      // Add to recycle bin
-      addToRecycleBin('customer', customerToDelete, customerToDelete.name);
-
-      // Remove from local state and storage
-      const updatedCustomers = customers.filter(c => c.id !== customerToDelete.id);
-      setCustomers(updatedCustomers);
-      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-
-      hapticSuccess();
-      toast({
-        title: "Customer Deleted",
-        description: `${customerToDelete.name} has been moved to recycle bin`,
-      });
-
-      setCustomerToDelete(null);
-    } catch (error) {
-      hapticError();
-      toast({
-        title: "Error",
-        description: "Failed to delete customer",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -216,12 +161,6 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
                             <div
                               key={customer.id}
                               className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors active:bg-muted cursor-pointer select-none"
-                              onTouchStart={() => handleLongPressStart(customer)}
-                              onTouchEnd={handleLongPressEnd}
-                              onTouchCancel={handleLongPressEnd}
-                              onMouseDown={() => handleLongPressStart(customer)}
-                              onMouseUp={handleLongPressEnd}
-                              onMouseLeave={handleLongPressEnd}
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -246,22 +185,7 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
         </div>
       </div>
 
-      <AlertDialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{customerToDelete?.name}"? This customer will be moved to the recycle bin for 30 days.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCustomer} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
