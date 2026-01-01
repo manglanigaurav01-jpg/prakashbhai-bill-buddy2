@@ -204,7 +204,6 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
-                    </div>
                   </div>
                   </SwipeableItem>
                 );
@@ -250,8 +249,6 @@ export const RecycleBin = ({ onNavigate }: RecycleBinProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
     </div>
-                  </SwipeableItem>
   );
 };

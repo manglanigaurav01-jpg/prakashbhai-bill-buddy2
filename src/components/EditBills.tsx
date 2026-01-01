@@ -531,5 +531,4 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     </div>
   );
 };
-
-
+}
