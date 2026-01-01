@@ -70,9 +70,6 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
     }
   };
 
-
-
-
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
@@ -184,8 +181,6 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
           </Card>
         </div>
       </div>
-
-              Delete
     </div>
   );
 };
