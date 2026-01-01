@@ -117,14 +117,21 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
   useEffect(() => {
     const savedScroll = sessionStorage.getItem('dashboardScroll');
     if (savedScroll && containerRef.current) {
-      // Use setTimeout to ensure content is fully rendered before scrolling
-      setTimeout(() => {
-        if (containerRef.current) {
-          containerRef.current.scrollTop = parseInt(savedScroll, 10);
-        }
-      }, 100);
+      // Use longer timeout and requestAnimationFrame for reliable scroll restoration
+      const timeoutId = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = parseInt(savedScroll, 10);
+          }
+        });
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
     }
+  }, []);
 
+  // Save scroll position on unmount
+  useEffect(() => {
     return () => {
       if (containerRef.current) {
         sessionStorage.setItem('dashboardScroll', containerRef.current.scrollTop.toString());
@@ -204,4 +211,5 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
     </div>
   );
 };
+
 
