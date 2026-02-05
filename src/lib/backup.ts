@@ -3,10 +3,9 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { getCustomers, getBills, getPayments, getAllCustomerBalances, getItems, getRateHistory, getBusinessAnalytics } from './storage';
 import { getRecycleBin } from './recycle-bin';
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, BusinessAnalytics, RecycledItem } from '@/types';
+import { BackupEncryptionMeta, decodeBackupPayload, encryptBackupPayload } from './backup-encryption';
 
-export interface BackupData {
-  version: string;
-  createdAt: string;
+export interface BackupPayload {
   customers: Customer[];
   bills: Bill[];
   payments: Payment[];
@@ -22,161 +21,252 @@ export interface BackupData {
   syncConflicts?: any[];
 }
 
+export interface BackupMetadata {
+  customerCount: number;
+  billCount: number;
+  paymentCount: number;
+  itemCount: number;
+  totalRevenue: number;
+  totalPayments: number;
+  lastBalancesCount: number;
+}
+
+export interface BackupData {
+  version: string;
+  createdAt: string;
+  metadata: BackupMetadata;
+  payload: string;
+  encryption?: BackupEncryptionMeta;
+}
+
+export type BackupMode = 'save' | 'share';
+
+export interface CreateBackupOptions {
+  mode?: BackupMode;
+  encrypt?: boolean;
+}
+
 export interface BackupResult {
   success: boolean;
   message: string;
   filePath?: string;
+  sharedUri?: string;
+  metadata?: BackupMetadata;
 }
 
-/**
- * Creates a comprehensive backup of all app data and saves to local storage
- */
-export const createBackup = async (forceShare: boolean = false): Promise<BackupResult> => {
-  try {
-    // Gather all data
-    const customers = getCustomers();
-    const bills = getBills();
-    const payments = getPayments();
-    const lastBalances = getAllCustomerBalances();
-    const items = getItems();
-    const itemRateHistory = getRateHistory();
-    const businessAnalytics = getBusinessAnalytics();
-    const recycleBin = getRecycleBin();
+const BACKUP_VERSION = '3.0';
+const BACKUP_FILE_PREFIX = 'billbuddy_backup_';
 
-    // Gather additional metadata
-    const dataVersion = localStorage.getItem('prakash_data_version') || '1.0.0';
-    const syncStatus = localStorage.getItem('prakash_sync_status');
-    const analysisCache = localStorage.getItem('prakash_analysis_cache');
-    const lastSync = localStorage.getItem('prakash_last_sync');
-    const syncConflicts = localStorage.getItem('prakash_sync_conflicts');
-
-    const backupData: BackupData = {
-      version: '3.0',
-      createdAt: new Date().toISOString(),
-      customers,
-      bills,
-      payments,
-      lastBalances,
-      items,
-      itemRateHistory,
-      businessAnalytics,
-      recycleBin,
-      dataVersion,
-      syncStatus: syncStatus ? JSON.parse(syncStatus) : undefined,
-      analysisCache: analysisCache ? JSON.parse(analysisCache) : undefined,
-      lastSync: lastSync || undefined,
-      syncConflicts: syncConflicts ? JSON.parse(syncConflicts) : undefined
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
     };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
-    // Convert to JSON
-    const jsonString = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
+const triggerDownload = (url: string, fileName: string) => {
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+};
 
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `billbuddy_backup_${timestamp}.json`;
+const shareBackupFile = async (uri: string, fileName: string, description: string) => {
+  const sharePayload = {
+    title: 'Bill Buddy Backup',
+    text: `${description}\nFile: ${fileName}`,
+    url: uri
+  };
 
-    if (Capacitor.isNativePlatform()) {
-      const base64Data = await blobToBase64(blob);
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    await navigator.share(sharePayload);
+    return;
+  }
 
+  const { Share } = await import('@capacitor/share');
+  await Share.share({
+    ...sharePayload,
+    dialogTitle: 'Share Backup File'
+  });
+};
+
+const buildPayload = (): BackupPayload => {
+  const customers = getCustomers();
+  const bills = getBills();
+  const payments = getPayments();
+  const lastBalances = getAllCustomerBalances();
+  const items = getItems();
+  const itemRateHistory = getRateHistory();
+  const businessAnalytics = getBusinessAnalytics();
+  const recycleBin = getRecycleBin();
+
+  const dataVersion = localStorage.getItem('prakash_data_version') || '1.0.0';
+  const syncStatus = localStorage.getItem('prakash_sync_status');
+  const analysisCache = localStorage.getItem('prakash_analysis_cache');
+  const lastSync = localStorage.getItem('prakash_last_sync');
+  const syncConflicts = localStorage.getItem('prakash_sync_conflicts');
+
+  return {
+    customers,
+    bills,
+    payments,
+    lastBalances,
+    items,
+    itemRateHistory,
+    businessAnalytics,
+    recycleBin,
+    dataVersion,
+    syncStatus: syncStatus ? JSON.parse(syncStatus) : undefined,
+    analysisCache: analysisCache ? JSON.parse(analysisCache) : undefined,
+    lastSync: lastSync || undefined,
+    syncConflicts: syncConflicts ? JSON.parse(syncConflicts) : undefined
+  };
+};
+
+const buildMetadata = (payload: BackupPayload): BackupMetadata => ({
+  customerCount: payload.customers.length,
+  billCount: payload.bills.length,
+  paymentCount: payload.payments.length,
+  itemCount: payload.items?.length || 0,
+  totalRevenue: payload.bills.reduce((sum, bill) => sum + bill.grandTotal, 0),
+  totalPayments: payload.payments.reduce((sum, payment) => sum + payment.amount, 0),
+  lastBalancesCount: payload.lastBalances.length
+});
+
+const describeDirectory = (directory: Directory | undefined) => {
+  if (directory === Directory.Documents) return 'Documents';
+  if (directory === Directory.Cache) return 'Cache';
+  return 'Device';
+};
+
+export const createBackup = async (options: CreateBackupOptions = {}): Promise<BackupResult> => {
+  const { mode = 'save', encrypt = true } = options;
+  const payload = buildPayload();
+  const payloadString = JSON.stringify(payload);
+  const { cipherText, encryption } = await encryptBackupPayload(payloadString);
+  const metadata = buildMetadata(payload);
+
+  const backupData: BackupData = {
+    version: BACKUP_VERSION,
+    createdAt: new Date().toISOString(),
+    metadata,
+    payload: cipherText
+  };
+
+  if (encryption) {
+    backupData.encryption = encryption;
+  }
+
+  const jsonString = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `${BACKUP_FILE_PREFIX}${timestamp}.json`;
+  const description = `Bill Buddy backup created on ${new Date().toLocaleString()}`;
+  const result: BackupResult = {
+    success: true,
+    message: '',
+    metadata
+  };
+
+  if (Capacitor.isNativePlatform()) {
+    const base64Data = await blobToBase64(blob);
+    const targetDirectories = mode === 'share'
+      ? [Directory.Cache]
+      : [Directory.Documents, Directory.Cache];
+
+    for (const directory of targetDirectories) {
       try {
-        // Save to Documents directory (user-accessible)
         await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
-          directory: Directory.Documents
+          directory
         });
 
         const fileUri = await Filesystem.getUri({
           path: fileName,
-          directory: Directory.Documents
+          directory
         });
 
-        console.log('Backup saved successfully to Documents:', fileUri.uri);
+        const locationName = describeDirectory(directory);
+        result.filePath = fileUri.uri;
+        result.message = `${mode === 'share' ? 'Backup ready to share' : `Backup saved to ${locationName} folder`}.\n\nFile: ${fileName}\nLocation: ${locationName}/${fileName}`;
 
-        return {
-          success: true,
-          message: `Backup saved to Documents folder!\n\nFile: ${fileName}\n\nLocation: Documents/${fileName}`,
-          filePath: fileUri.uri
-        };
-      } catch (error) {
-        console.error('Failed to save to Documents, trying Cache:', error);
-        
-        // Fallback: Try Cache directory
-        try {
-          await Filesystem.writeFile({
-            path: fileName,
-            data: base64Data,
-            directory: Directory.Cache
-          });
-
-          const fileUri = await Filesystem.getUri({
-            path: fileName,
-            directory: Directory.Cache
-          });
-
-          return {
-            success: true,
-            message: `Backup saved to Cache folder!\n\nFile: ${fileName}`,
-            filePath: fileUri.uri
-          };
-        } catch (cacheError) {
-          console.error('Cache save also failed:', cacheError);
-          throw new Error('Failed to save backup to device storage');
+        if (mode === 'share' && fileUri.uri) {
+          try {
+            await shareBackupFile(fileUri.uri, fileName, description);
+            result.sharedUri = fileUri.uri;
+          } catch (shareError) {
+            console.warn('Backup share failed:', shareError);
+            result.message += `\n\nCould not open share dialog, file saved in ${locationName}`;
+          }
         }
-      }
-    } else {
-      // Web: Download file
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
 
-      return {
-        success: true,
-        message: 'Backup downloaded successfully'
-      };
+        return result;
+      } catch (error) {
+        console.error('Failed to save backup to', directory, error);
+        if (directory === Directory.Documents && mode === 'save') {
+          continue; // try cache as fallback
+        }
+        throw error;
+      }
     }
-  } catch (error) {
-    console.error('Backup creation failed:', error);
-    return {
-      success: false,
-      message: `Failed to create backup: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
+
+    throw new Error('Failed to save backup to device storage');
   }
+
+  const objectUrl = URL.createObjectURL(blob);
+  if (mode === 'share') {
+    try {
+      await shareBackupFile(objectUrl, fileName, description);
+      result.sharedUri = objectUrl;
+      result.message = 'Backup shared successfully.';
+    } catch (shareError) {
+      console.warn('Web share failed, downloading instead:', shareError);
+      triggerDownload(objectUrl, fileName);
+      result.filePath = objectUrl;
+      result.message = 'Backup downloaded (web sharing was not available).';
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+    }
+    return result;
+  }
+
+  triggerDownload(objectUrl, fileName);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+  result.filePath = objectUrl;
+  result.message = 'Backup downloaded successfully.';
+  return result;
 };
 
-/**
- * Restores data from a backup file
- */
 export const restoreBackup = async (file: File): Promise<BackupResult> => {
   try {
     const text = await file.text();
     const backupData: BackupData = JSON.parse(text);
+    const payload = await parseBackupPayload(backupData);
 
-    // Validate backup structure
-    if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
+    if (!payload.customers || !payload.bills || !payload.payments || !payload.lastBalances) {
       throw new Error('Invalid backup file structure');
     }
 
-    // Clear existing data and restore from backup
     localStorage.clear();
 
-    // Restore core data
-    localStorage.setItem('prakash_customers', JSON.stringify(backupData.customers));
-    localStorage.setItem('prakash_bills', JSON.stringify(backupData.bills));
-    localStorage.setItem('prakash_payments', JSON.stringify(backupData.payments));
+    localStorage.setItem('prakash_customers', JSON.stringify(payload.customers));
+    localStorage.setItem('prakash_bills', JSON.stringify(payload.bills));
+    localStorage.setItem('prakash_payments', JSON.stringify(payload.payments));
 
-    // Restore items
-    const restoredItems = backupData.items || [];
+    const restoredItems = payload.items || [];
     const itemsFromBills: ItemMaster[] = [];
     const existingItemNames = new Set(restoredItems.map(item => item.name.toLowerCase()));
 
-    backupData.bills.forEach(bill => {
+    payload.bills.forEach(bill => {
       bill.items.forEach(billItem => {
         const itemName = billItem.itemName.trim();
         const itemNameLower = itemName.toLowerCase();
@@ -198,32 +288,32 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
     const allItems = [...restoredItems, ...itemsFromBills];
     localStorage.setItem('prakash_items', JSON.stringify(allItems));
 
-    if (backupData.itemRateHistory) {
-      localStorage.setItem('prakash_item_rate_history', JSON.stringify(backupData.itemRateHistory));
+    if (payload.itemRateHistory) {
+      localStorage.setItem('prakash_item_rate_history', JSON.stringify(payload.itemRateHistory));
     }
 
-    if (backupData.businessAnalytics) {
-      localStorage.setItem('prakash_business_analytics', JSON.stringify(backupData.businessAnalytics));
+    if (payload.businessAnalytics) {
+      localStorage.setItem('prakash_business_analytics', JSON.stringify(payload.businessAnalytics));
     }
 
-    if (backupData.recycleBin) {
-      localStorage.setItem('recycle_bin', JSON.stringify(backupData.recycleBin));
+    if (payload.recycleBin) {
+      localStorage.setItem('recycle_bin', JSON.stringify(payload.recycleBin));
     }
 
-    if (backupData.dataVersion) {
-      localStorage.setItem('prakash_data_version', backupData.dataVersion);
+    if (payload.dataVersion) {
+      localStorage.setItem('prakash_data_version', payload.dataVersion);
     }
-    if (backupData.syncStatus) {
-      localStorage.setItem('prakash_sync_status', JSON.stringify(backupData.syncStatus));
+    if (payload.syncStatus) {
+      localStorage.setItem('prakash_sync_status', JSON.stringify(payload.syncStatus));
     }
-    if (backupData.analysisCache) {
-      localStorage.setItem('prakash_analysis_cache', JSON.stringify(backupData.analysisCache));
+    if (payload.analysisCache) {
+      localStorage.setItem('prakash_analysis_cache', JSON.stringify(payload.analysisCache));
     }
-    if (backupData.lastSync) {
-      localStorage.setItem('prakash_last_sync', backupData.lastSync);
+    if (payload.lastSync) {
+      localStorage.setItem('prakash_last_sync', payload.lastSync);
     }
-    if (backupData.syncConflicts) {
-      localStorage.setItem('prakash_sync_conflicts', JSON.stringify(backupData.syncConflicts));
+    if (payload.syncConflicts) {
+      localStorage.setItem('prakash_sync_conflicts', JSON.stringify(payload.syncConflicts));
     }
 
     return {
@@ -239,34 +329,22 @@ export const restoreBackup = async (file: File): Promise<BackupResult> => {
   }
 };
 
-/**
- * Converts a Blob to base64 string
- */
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-/**
- * Gets backup file info for display
- */
 export const getBackupInfo = (backupData: BackupData) => {
+  const { metadata } = backupData;
   return {
     version: backupData.version,
     createdAt: new Date(backupData.createdAt).toLocaleString(),
-    customerCount: backupData.customers.length,
-    billCount: backupData.bills.length,
-    paymentCount: backupData.payments.length,
-    itemCount: backupData.items?.length || 0,
-    totalRevenue: backupData.bills.reduce((sum, bill) => sum + bill.grandTotal, 0),
-    totalPayments: backupData.payments.reduce((sum, payment) => sum + payment.amount, 0)
+    customerCount: metadata.customerCount,
+    billCount: metadata.billCount,
+    paymentCount: metadata.paymentCount,
+    itemCount: metadata.itemCount,
+    totalRevenue: metadata.totalRevenue,
+    totalPayments: metadata.totalPayments,
+    lastBalancesCount: metadata.lastBalancesCount
   };
+};
+
+export const parseBackupPayload = async (backupData: BackupData): Promise<BackupPayload> => {
+  const payloadString = await decodeBackupPayload(backupData.payload, backupData.encryption);
+  return JSON.parse(payloadString);
 };

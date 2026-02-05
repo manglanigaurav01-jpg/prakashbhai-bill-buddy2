@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createBackup, restoreBackup, BackupData } from '@/lib/backup';
+import { createBackup, restoreBackup, BackupData, BackupPayload, parseBackupPayload } from '@/lib/backup';
 import { useToast } from '@/components/ui/use-toast';
 import { Download, Upload, RefreshCw, FileText, FolderOpen } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -10,13 +10,14 @@ import { Capacitor } from '@capacitor/core';
 export const BackupManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<BackupData | null>(null);
+  const [previewPayload, setPreviewPayload] = useState<BackupPayload | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
 
-  const handleCreateBackup = async () => {
+  const handleSaveBackup = async () => {
     setIsLoading(true);
     try {
-      const result = await createBackup(Capacitor.isNativePlatform());
+      const result = await createBackup({ mode: 'save' });
       if (result.success) {
         toast({
           title: "✅ Backup Saved",
@@ -36,6 +37,29 @@ export const BackupManager = () => {
     }
   };
 
+  const handleShareBackup = async () => {
+    setIsLoading(true);
+    try {
+      const result = await createBackup({ mode: 'share' });
+      if (result.success) {
+        toast({
+          title: "âœ… Backup Shared",
+          description: result.message
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Share Failed",
+        description: error instanceof Error ? error.message : "Failed to share backup"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUploadBackup = async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -49,12 +73,14 @@ export const BackupManager = () => {
       try {
         const text = await file.text();
         const backupData: BackupData = JSON.parse(text);
+        const payload = await parseBackupPayload(backupData);
 
-        if (!backupData.customers || !backupData.bills || !backupData.payments || !backupData.lastBalances) {
+        if (!payload.customers || !payload.bills || !payload.payments || !payload.lastBalances) {
           throw new Error('Invalid backup file structure');
         }
 
         setPreviewData(backupData);
+        setPreviewPayload(payload);
         setShowPreview(true);
       } catch (error) {
         toast({
@@ -80,9 +106,18 @@ export const BackupManager = () => {
       return;
     }
 
+    if (!previewPayload) {
+      toast({
+        variant: "destructive",
+        title: "Restore Failed",
+        description: "Parsed backup data is missing"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (!previewData.customers || !previewData.bills || !previewData.payments || !previewData.lastBalances) {
+      if (!previewPayload.customers || !previewPayload.bills || !previewPayload.payments || !previewPayload.lastBalances) {
         throw new Error('Backup data is corrupted or incomplete');
       }
 
@@ -102,6 +137,7 @@ export const BackupManager = () => {
         });
         setShowPreview(false);
         setPreviewData(null);
+        setPreviewPayload(null);
         window.location.reload();
       } else {
         throw new Error(result.message);
@@ -146,18 +182,29 @@ export const BackupManager = () => {
                   </div>
                 )}
               </div>
-              <Button
-                onClick={handleCreateBackup}
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                {isLoading ? 'Creating Backup...' : 'Create & Save Backup'}
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleShareBackup}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isLoading ? 'Preparing...' : 'Share Backup'}
+                </Button>
+                <Button
+                  onClick={handleSaveBackup}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Save Backup
+                </Button>
+              </div>
             </div>
 
             <div className="border rounded-lg p-4">
@@ -198,23 +245,23 @@ export const BackupManager = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded">
                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Customers</p>
-                  <p className="text-lg font-semibold">{previewData.customers.length}</p>
+                  <p className="text-lg font-semibold">{previewPayload?.customers.length || 0}</p>
                 </div>
                 <div className="bg-green-50 dark:bg-green-950 p-3 rounded">
                   <p className="text-sm font-medium text-green-600 dark:text-green-400">Bills</p>
-                  <p className="text-lg font-semibold">{previewData.bills.length}</p>
+                  <p className="text-lg font-semibold">{previewPayload?.bills.length || 0}</p>
                 </div>
                 <div className="bg-purple-50 dark:bg-purple-950 p-3 rounded">
                   <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Payments</p>
-                  <p className="text-lg font-semibold">{previewData.payments.length}</p>
+                  <p className="text-lg font-semibold">{previewPayload?.payments.length || 0}</p>
                 </div>
                 <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded">
                   <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Balances</p>
-                  <p className="text-lg font-semibold">{previewData.lastBalances.length}</p>
+                  <p className="text-lg font-semibold">{previewPayload?.lastBalances.length || 0}</p>
                 </div>
                 <div className="bg-green-50 dark:bg-green-950 p-3 rounded">
                   <p className="text-sm font-medium text-green-600 dark:text-green-400">Items</p>
-                  <p className="text-lg font-semibold">{previewData.items?.length || 0}</p>
+                  <p className="text-lg font-semibold">{previewPayload?.items?.length || 0}</p>
                 </div>
               </div>
 
@@ -233,6 +280,7 @@ export const BackupManager = () => {
                 onClick={() => {
                   setShowPreview(false);
                   setPreviewData(null);
+                  setPreviewPayload(null);
                 }}
               >
                 Cancel
