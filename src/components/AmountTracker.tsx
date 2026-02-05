@@ -191,9 +191,9 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-background px-4 py-4 md:px-8 md:py-6 lg:px-12 lg:py-8">
+      <div className="container mx-auto max-w-5xl">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
           <Button variant="outline" onClick={() => onNavigate('dashboard')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
@@ -201,7 +201,7 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
           <h1 className="text-2xl font-bold text-foreground">Amount Paid/Not Paid</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

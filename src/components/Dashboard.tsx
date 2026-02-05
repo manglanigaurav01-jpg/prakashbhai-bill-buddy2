@@ -141,9 +141,12 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
   const isDarkMode = effectiveTheme === 'dark';
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background p-4 md:p-8 overflow-auto">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-background px-4 py-4 md:px-8 md:py-6 lg:px-12 lg:py-8 overflow-auto"
+    >
+      <div className="container mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4 md:gap-6">
           <div className="text-center md:text-left">
             <h1 className="text-4xl font-bold text-foreground mb-2">Prakashbhai</h1>
             <p className="text-muted-foreground text-xl">Bill Manager</p>
@@ -183,7 +186,7 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
           onNavigate={onNavigate}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (

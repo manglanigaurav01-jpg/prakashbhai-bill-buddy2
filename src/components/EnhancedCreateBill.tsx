@@ -270,10 +270,10 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
 
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background px-4 py-4 md:px-8 md:py-6 lg:px-12 lg:py-8">
+      <div className="container mx-auto max-w-5xl space-y-6">
         {/* Enhanced Header with Progress */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -288,7 +288,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
               <p className="text-muted-foreground">Create a new bill with smart item selection</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-stretch md:self-auto justify-between md:justify-end">
             <Badge variant={formProgress === 100 ? "default" : "secondary"}>
               {formProgress === 100 ? (
                 <CheckCircle className="w-3 h-3 mr-1" />
