@@ -52,20 +52,17 @@ export const getPayments = (): Payment[] => {
   return data ? JSON.parse(data) : [];
 };
 
-// Normalize customer name: trim, remove extra spaces, normalize casing
+// Normalize customer name for duplicate checks while preserving the user's casing in storage
 export const normalizeCustomerName = (name: string): string => {
   return name
     .trim()
-    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Title case
-    .join(' ');
+    .replace(/\s+/g, ' ');
 };
 
 export const saveCustomer = (customer: Omit<Customer, 'id' | 'createdAt'>): Customer => {
   const customers = getCustomers();
-  // Normalize the input name
   const normalizedInputName = normalizeCustomerName(customer.name);
+  const trimmedInputName = customer.name.trim();
   
   // Check for duplicates using normalized comparison (case-insensitive, space-insensitive)
   const normalizedInputLower = normalizedInputName.toLowerCase().replace(/\s+/g, ' ');
@@ -80,12 +77,13 @@ export const saveCustomer = (customer: Omit<Customer, 'id' | 'createdAt'>): Cust
   
   const newCustomer: Customer = {
     ...customer,
-    name: normalizedInputName, // Save with normalized name
+    name: trimmedInputName,
     id: Date.now().toString(),
     createdAt: new Date().toISOString(),
   };
   customers.push(newCustomer);
   localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+  window.dispatchEvent(new Event('storage'));
   return newCustomer;
 };
 
@@ -107,14 +105,56 @@ export const updateCustomer = (customerId: string, updates: Partial<Customer>): 
   const index = customers.findIndex(c => c.id === customerId);
   
   if (index === -1) return null;
+
+  let nextUpdates = { ...updates };
+  const currentCustomer = customers[index];
+
+  if (typeof updates.name === 'string') {
+    const trimmedName = updates.name.trim();
+    if (!trimmedName) {
+      throw new Error('INVALID_CUSTOMER_NAME');
+    }
+
+    const normalizedInputLower = normalizeCustomerName(trimmedName).toLowerCase();
+    const isDuplicate = customers.some(c => {
+      if (c.id === customerId) return false;
+      return normalizeCustomerName(c.name).toLowerCase() === normalizedInputLower;
+    });
+
+    if (isDuplicate) {
+      throw new Error('DUPLICATE_CUSTOMER_NAME');
+    }
+
+    nextUpdates = {
+      ...nextUpdates,
+      name: trimmedName,
+    };
+  }
   
   const updatedCustomer: Customer = {
-    ...customers[index],
-    ...updates,
+    ...currentCustomer,
+    ...nextUpdates,
   };
   
   customers[index] = updatedCustomer;
   localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+
+  if (typeof nextUpdates.name === 'string' && nextUpdates.name !== currentCustomer.name) {
+    const bills = getBills().map(bill =>
+      bill.customerId === customerId
+        ? { ...bill, customerName: nextUpdates.name as string }
+        : bill
+    );
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(bills));
+
+    const payments = getPayments().map(payment =>
+      payment.customerId === customerId
+        ? { ...payment, customerName: nextUpdates.name as string }
+        : payment
+    );
+    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
+  }
+
   window.dispatchEvent(new Event('storage'));
   
   return updatedCustomer;

@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, User } from "lucide-react";
-import { getCustomers, saveCustomer } from "@/lib/storage";
+import { getCustomers, saveCustomer, updateCustomer } from "@/lib/storage";
 import { Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from '@/lib/haptics';
+import { SwipeableItem } from "@/components/SwipeableItem";
 
 interface CustomersProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -15,9 +17,9 @@ interface CustomersProps {
 
 export const Customers = ({ onNavigate }: CustomersProps) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [startIdx, setStartIdx] = useState(0);
   const [newCustomerName, setNewCustomerName] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editedCustomerName, setEditedCustomerName] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,6 +68,62 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAddCustomer();
+    }
+  };
+
+  const openEditDialog = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setEditedCustomerName(customer.name);
+  };
+
+  const handleUpdateCustomer = () => {
+    if (!editingCustomer) return;
+
+    if (!editedCustomerName.trim()) {
+      toast({
+        title: "Invalid Customer Name",
+        description: "Please enter a customer name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedCustomer = updateCustomer(editingCustomer.id, {
+        name: editedCustomerName,
+      });
+
+      if (!updatedCustomer) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+
+      setCustomers(currentCustomers =>
+        currentCustomers.map(customer =>
+          customer.id === editingCustomer.id ? updatedCustomer : customer
+        )
+      );
+      setEditingCustomer(null);
+      setEditedCustomerName("");
+      hapticSuccess();
+      toast({
+        title: "Customer Updated",
+        description: `${updatedCustomer.name} has been updated successfully`,
+      });
+    } catch (error: any) {
+      hapticError();
+      if (error?.message === 'DUPLICATE_CUSTOMER_NAME') {
+        toast({
+          title: "A customer with this name already exists",
+          description: "Please use a different name",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update customer",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -118,6 +176,7 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
                 <User className="w-5 h-5" />
                 Customer List ({customers.length})
               </CardTitle>
+              <p className="text-sm text-muted-foreground">Swipe left on a customer to edit the name.</p>
             </CardHeader>
             <CardContent>
               {customers.length === 0 ? (
@@ -128,58 +187,81 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
                 </div>
               ) : (
                 <div
-                  ref={listRef}
-                  className="overflow-auto"
-                  style={{ maxHeight: '480px' }}
-                  onScroll={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    const ITEM_H = 72;
-                    const newStart = Math.floor(el.scrollTop / ITEM_H);
-                    setStartIdx(newStart);
-                  }}
+                  className="overflow-y-auto overscroll-contain pr-1"
+                  style={{ maxHeight: 'min(65vh, 720px)' }}
                 >
-                  {(() => {
-                    const ITEM_H = 72;
-                    const overscan = 4;
-                    const total = customers.length;
-                    const containerH = listRef.current ? listRef.current.getBoundingClientRect().height : 480;
-                    const visible = Math.ceil(containerH / ITEM_H) + overscan * 2;
-                    const rs = Math.max(0, startIdx - overscan);
-                    const re = Math.min(total, rs + visible);
-                    const top = rs * ITEM_H;
-                    const bottom = Math.max(0, (total - re) * ITEM_H);
-                    const slice = customers.slice(rs, re);
-                    return (
-                      <div>
-                        <div style={{ height: top }} />
-                        <div className="space-y-2">
-                          {slice.map((customer, idx) => (
-                            <div
-                              key={customer.id}
-                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <span className="text-sm font-medium text-primary">{rs + idx + 1}</span>
-                                </div>
-                                <div>
-                                  <p className="font-medium">{customer.name}</p>
-                                  <p className="text-sm text-muted-foreground">Added on {new Date(customer.createdAt).toLocaleDateString()}</p>
-                                </div>
-                              </div>
+                  <div className="space-y-2">
+                    {customers.map((customer, idx) => (
+                      <SwipeableItem
+                        key={customer.id}
+                        onSwipeLeft={() => openEditDialog(customer)}
+                      >
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors bg-card min-h-[72px]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-sm font-medium text-primary">{idx + 1}</span>
                             </div>
-                          ))}
+                            <div className="min-w-0">
+                              <p className="font-medium break-words">{customer.name}</p>
+                              <p className="text-sm text-muted-foreground">Added on {new Date(customer.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ height: bottom }} />
-                      </div>
-                    );
-                  })()}
+                      </SwipeableItem>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Dialog open={!!editingCustomer} onOpenChange={(open) => {
+        if (!open) {
+          setEditingCustomer(null);
+          setEditedCustomerName("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Customer Name</DialogTitle>
+            <DialogDescription>
+              Update the customer name. The app will now keep the same capital and small letters exactly as you type them.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="editCustomerName">Customer Name</Label>
+            <Input
+              id="editCustomerName"
+              placeholder="Enter customer name"
+              value={editedCustomerName}
+              onChange={(e) => setEditedCustomerName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleUpdateCustomer();
+                }
+              }}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingCustomer(null);
+                setEditedCustomerName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateCustomer} disabled={!editedCustomerName.trim()}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
