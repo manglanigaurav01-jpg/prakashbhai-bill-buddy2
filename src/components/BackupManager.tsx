@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createBackup, restoreBackup, BackupData, BackupPayload, parseBackupPayload } from '@/lib/backup';
+import { createBackup, restoreBackup, BackupData, BackupPayload, parseBackupPayload, readBackupDataFile } from '@/lib/backup';
 import { useToast } from '@/components/ui/use-toast';
 import { Download, Upload, RefreshCw, FileText, FolderOpen } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -71,8 +71,7 @@ export const BackupManager = () => {
 
       setIsLoading(true);
       try {
-        const text = await file.text();
-        const backupData: BackupData = JSON.parse(text);
+        const backupData: BackupData = await readBackupDataFile(file);
         const payload = await parseBackupPayload(backupData);
 
         if (!payload.customers || !payload.bills || !payload.payments || !payload.lastBalances) {

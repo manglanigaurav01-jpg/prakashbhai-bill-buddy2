@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { getCustomers, getBills, getPayments, getAllCustomerBalances, getItems, getRateHistory, getBusinessAnalytics } from './storage';
 import { getRecycleBin } from './recycle-bin';
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, BusinessAnalytics, RecycledItem } from '@/types';
@@ -57,17 +57,107 @@ export interface BackupResult {
 const BACKUP_VERSION = '3.0';
 const BACKUP_FILE_PREFIX = 'billbuddy_backup_';
 
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+const stripBom = (value: string) => value.replace(/^\uFEFF/, '').trim();
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+const arrayBufferToBinaryString = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  let result = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    result += String.fromCharCode(bytes[i]);
+  }
+  return result;
+};
+
+const tryParseBackupData = (value: string): BackupData | null => {
+  const normalizedValue = stripBom(value);
+  if (!normalizedValue) return null;
+
+  const parseJson = (input: string): BackupData | null => {
+    try {
+      const parsed = JSON.parse(stripBom(input));
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        typeof parsed.version === 'string' &&
+        typeof parsed.createdAt === 'string' &&
+        typeof parsed.payload === 'string'
+      ) {
+        return parsed as BackupData;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  };
+
+  const directJson = parseJson(normalizedValue);
+  if (directJson) return directJson;
+
+  const withoutNulls = normalizedValue.replace(/\u0000/g, '');
+  if (withoutNulls !== normalizedValue) {
+    const nullStrippedJson = parseJson(withoutNulls);
+    if (nullStrippedJson) return nullStrippedJson;
+  }
+
+  const compactValue = normalizedValue.replace(/\s+/g, '');
+  const looksLikeBase64 = compactValue.length > 0 && compactValue.length % 4 === 0 && /^[A-Za-z0-9+/=]+$/.test(compactValue);
+  if (looksLikeBase64) {
+    try {
+      const decoded = atob(compactValue);
+      const decodedJson = parseJson(decoded);
+      if (decodedJson) return decodedJson;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+export const readBackupDataFile = async (file: File): Promise<BackupData> => {
+  const text = await file.text();
+  const directParse = tryParseBackupData(text);
+  if (directParse) {
+    return directParse;
+  }
+
+  const buffer = await file.arrayBuffer();
+  const decoders = ['utf-8', 'utf-16le', 'utf-16be'] as const;
+  for (const encoding of decoders) {
+    try {
+      const decoded = new TextDecoder(encoding).decode(buffer);
+      const parsed = tryParseBackupData(decoded);
+      if (parsed) {
+        return parsed;
+      }
+    } catch {
+      // Try the next decoder
+    }
+  }
+
+  const binaryString = arrayBufferToBinaryString(buffer);
+  const binaryParse = tryParseBackupData(binaryString);
+  if (binaryParse) {
+    return binaryParse;
+  }
+
+  const bufferAsBase64 = arrayBufferToBase64(buffer);
+  const base64Parse = tryParseBackupData(bufferAsBase64);
+  if (base64Parse) {
+    return base64Parse;
+  }
+
+  throw new Error('Invalid backup file format');
 };
 
 const triggerDownload = (url: string, fileName: string) => {
@@ -177,7 +267,6 @@ export const createBackup = async (options: CreateBackupOptions = {}): Promise<B
   };
 
   if (Capacitor.isNativePlatform()) {
-    const base64Data = await blobToBase64(blob);
     const targetDirectories = mode === 'share'
       ? [Directory.Cache]
       : [Directory.Documents, Directory.Cache];
@@ -186,8 +275,9 @@ export const createBackup = async (options: CreateBackupOptions = {}): Promise<B
       try {
         await Filesystem.writeFile({
           path: fileName,
-          data: base64Data,
-          directory
+          data: jsonString,
+          directory,
+          encoding: Encoding.UTF8
         });
 
         const fileUri = await Filesystem.getUri({
@@ -248,8 +338,7 @@ export const createBackup = async (options: CreateBackupOptions = {}): Promise<B
 
 export const restoreBackup = async (file: File): Promise<BackupResult> => {
   try {
-    const text = await file.text();
-    const backupData: BackupData = JSON.parse(text);
+    const backupData = await readBackupDataFile(file);
     const payload = await parseBackupPayload(backupData);
 
     if (!payload.customers || !payload.bills || !payload.payments || !payload.lastBalances) {
