@@ -132,9 +132,11 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   // Save scroll position on unmount
   useEffect(() => {
+    const container = containerRef.current;
+
     return () => {
-      if (containerRef.current) {
-        sessionStorage.setItem('dashboardScroll', containerRef.current.scrollTop.toString());
+      if (container) {
+        sessionStorage.setItem('dashboardScroll', container.scrollTop.toString());
       }
     };
   }, []);

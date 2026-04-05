@@ -103,7 +103,7 @@ const tryParseBackupData = (value: string): BackupData | null => {
   const directJson = parseJson(normalizedValue);
   if (directJson) return directJson;
 
-  const withoutNulls = normalizedValue.replace(/\u0000/g, '');
+  const withoutNulls = normalizedValue.split('\0').join('');
   if (withoutNulls !== normalizedValue) {
     const nullStrippedJson = parseJson(withoutNulls);
     if (nullStrippedJson) return nullStrippedJson;
