@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeft, Moon, Sun, Trash2, User as UserIcon, Shield, 
 import { useToast } from "@/hooks/use-toast";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
-import { BackupManager } from "./BackupManager";
+import { BackupManagerPlain } from "./BackupManagerPlain";
 import { isPasswordSet, setPassword, verifyPassword, changePassword, removePassword } from '@/components/password';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -285,7 +285,7 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
               </CardContent>
             </Card>
             {/* Enhanced Backup System */}
-            <BackupManager />
+            <BackupManagerPlain />
           </div>
           {/* Right Column - Quick Actions */}
           <div className="space-y-6">

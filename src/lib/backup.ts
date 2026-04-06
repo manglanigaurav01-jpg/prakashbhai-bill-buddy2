@@ -3,7 +3,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { getCustomers, getBills, getPayments, getAllCustomerBalances, getItems, getRateHistory, getBusinessAnalytics } from './storage';
 import { getRecycleBin } from './recycle-bin';
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, BusinessAnalytics, RecycledItem } from '@/types';
-import { BackupEncryptionMeta, decodeBackupPayload, encryptBackupPayload } from './backup-encryption';
+import { BackupEncryptionMeta, decodeBackupPayload } from './backup-encryption';
 
 export interface BackupPayload {
   customers: Customer[];
@@ -43,7 +43,6 @@ export type BackupMode = 'save' | 'share';
 
 export interface CreateBackupOptions {
   mode?: BackupMode;
-  encrypt?: boolean;
 }
 
 export interface BackupResult {
@@ -56,8 +55,10 @@ export interface BackupResult {
 
 const BACKUP_VERSION = '3.0';
 const BACKUP_FILE_PREFIX = 'billbuddy_backup_';
+const TEXT_ENCODER = new TextEncoder();
 
 const stripBom = (value: string) => value.replace(/^\uFEFF/, '').trim();
+const isObject = (value: unknown): value is Record<string, any> => typeof value === 'object' && value !== null;
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer);
@@ -77,6 +78,42 @@ const arrayBufferToBinaryString = (buffer: ArrayBuffer) => {
   return result;
 };
 
+const coerceLegacyBackupData = (value: unknown): BackupData | null => {
+  if (!isObject(value)) return null;
+
+  if (
+    !Array.isArray(value.customers) ||
+    !Array.isArray(value.bills) ||
+    !Array.isArray(value.payments) ||
+    !Array.isArray(value.lastBalances)
+  ) {
+    return null;
+  }
+
+  const payload: BackupPayload = {
+    customers: value.customers as Customer[],
+    bills: value.bills as Bill[],
+    payments: value.payments as Payment[],
+    lastBalances: value.lastBalances as CustomerBalance[],
+    items: Array.isArray(value.items) ? value.items as ItemMaster[] : [],
+    itemRateHistory: Array.isArray(value.itemRateHistory) ? value.itemRateHistory as ItemRateHistory[] : [],
+    businessAnalytics: isObject(value.businessAnalytics) ? value.businessAnalytics as BusinessAnalytics : undefined,
+    recycleBin: Array.isArray(value.recycleBin) ? value.recycleBin as RecycledItem[] : [],
+    dataVersion: typeof value.dataVersion === 'string' ? value.dataVersion : undefined,
+    syncStatus: value.syncStatus,
+    analysisCache: value.analysisCache,
+    lastSync: typeof value.lastSync === 'string' ? value.lastSync : undefined,
+    syncConflicts: Array.isArray(value.syncConflicts) ? value.syncConflicts : undefined
+  };
+
+  return {
+    version: typeof value.version === 'string' ? value.version : BACKUP_VERSION,
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : new Date().toISOString(),
+    metadata: buildMetadata(payload),
+    payload: encodePlainPayload(JSON.stringify(payload))
+  };
+};
+
 const tryParseBackupData = (value: string): BackupData | null => {
   const normalizedValue = stripBom(value);
   if (!normalizedValue) return null;
@@ -93,11 +130,11 @@ const tryParseBackupData = (value: string): BackupData | null => {
       ) {
         return parsed as BackupData;
       }
+
+      return coerceLegacyBackupData(parsed);
     } catch {
       return null;
     }
-
-    return null;
   };
 
   const directJson = parseJson(normalizedValue);
@@ -123,6 +160,8 @@ const tryParseBackupData = (value: string): BackupData | null => {
 
   return null;
 };
+
+const encodePlainPayload = (value: string) => arrayBufferToBase64(TEXT_ENCODER.encode(value));
 
 export const readBackupDataFile = async (file: File): Promise<BackupData> => {
   const text = await file.text();
@@ -238,10 +277,10 @@ const describeDirectory = (directory: Directory | undefined) => {
 };
 
 export const createBackup = async (options: CreateBackupOptions = {}): Promise<BackupResult> => {
-  const { mode = 'save', encrypt = true } = options;
+  const { mode = 'save' } = options;
   const payload = buildPayload();
   const payloadString = JSON.stringify(payload);
-  const { cipherText, encryption } = await encryptBackupPayload(payloadString);
+  const cipherText = encodePlainPayload(payloadString);
   const metadata = buildMetadata(payload);
 
   const backupData: BackupData = {
@@ -250,10 +289,6 @@ export const createBackup = async (options: CreateBackupOptions = {}): Promise<B
     metadata,
     payload: cipherText
   };
-
-  if (encryption) {
-    backupData.encryption = encryption;
-  }
 
   const jsonString = JSON.stringify(backupData, null, 2);
   const blob = new Blob([jsonString], { type: 'application/json' });
@@ -434,6 +469,22 @@ export const getBackupInfo = (backupData: BackupData) => {
 };
 
 export const parseBackupPayload = async (backupData: BackupData): Promise<BackupPayload> => {
-  const payloadString = await decodeBackupPayload(backupData.payload, backupData.encryption);
-  return JSON.parse(payloadString);
+  if (!backupData.encryption) {
+    const payloadString = await decodeBackupPayload(backupData.payload);
+    return JSON.parse(payloadString);
+  }
+
+  try {
+    const payloadString = await decodeBackupPayload(backupData.payload, backupData.encryption);
+    return JSON.parse(payloadString);
+  } catch (error) {
+    try {
+      const plaintextPayload = await decodeBackupPayload(backupData.payload);
+      return JSON.parse(plaintextPayload);
+    } catch {
+      throw new Error(
+        'This backup is encrypted and cannot be opened by this app install. If it was created before uninstalling the old app, the old encryption key was lost.'
+      );
+    }
+  }
 };
