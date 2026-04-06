@@ -28,6 +28,15 @@ const formatPdfNumber = (value: number) => (
 
 const formatPdfAmount = (value: number) => `Rs. ${value.toFixed(2)}`;
 
+const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(110, 110, 110);
+  doc.text(text, pageWidth / 2, y, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+};
+
 type LastBalanceSalesRow = {
   salesSrNo: string;
   salesDate: string;
@@ -128,7 +137,7 @@ export const generateMonthlyBalancePDF = async (
     return billDate >= monthStart && billDate <= monthEnd;
   });
 
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: 'landscape' });
 
   // Header
   doc.setFontSize(18);
@@ -150,83 +159,43 @@ export const generateMonthlyBalancePDF = async (
     new Date(p.date) <= monthEnd
   );
 
-  // Prepare aligned rows for sales/payments so we don't show placeholder dashes
-  const salesRows: Array<{ sr: string; date: string; item: string; total: string }> = [];
-  const paymentRows: Array<{ date: string; amount: string }> = [];
-  let srCounter = 1;
-  let totalSales = 0;
-  let totalPaid = 0;
+  const { salesRows, paymentRows, totalSales, totalPaid } = buildLastBalanceTableRows(
+    bills,
+    customerPayments,
+    previousMonthBalance?.closingBalance
+  );
 
-  // Add "Last Month Closing Balance" as first row if previous month balance exists
-  // The closing balance already accounts for payments (openingBalance + bills - payments)
-  if (previousMonthBalance && typeof previousMonthBalance.closingBalance === 'number') {
-    const closingBalance = previousMonthBalance.closingBalance;
-    salesRows.push({
-      sr: '',
-      date: '',
-      item: 'Last Month Closing Balance',
-      total: `Rs. ${closingBalance.toFixed(2)}`
-    });
-    // Add closing balance to total sales
-    totalSales += closingBalance;
-  }
+  const maxRows = Math.max(salesRows.length, paymentRows.length, 1);
+  const tableData = Array.from({ length: maxRows }, (_, index) => [
+    salesRows[index]?.salesSrNo ?? '',
+    salesRows[index]?.salesDate ?? '',
+    salesRows[index]?.itemName ?? '',
+    salesRows[index]?.quantity ?? '',
+    salesRows[index]?.rate ?? '',
+    salesRows[index]?.totalAmount ?? '',
+    paymentRows[index]?.paymentSrNo ?? '',
+    paymentRows[index]?.paymentDate ?? '',
+    paymentRows[index]?.amountPaid ?? ''
+  ]);
 
-  // Sort bills by date (ascending)
-  bills.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  
-  // Sort payments by date (ascending)
-  customerPayments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  // First, add all sales (bills) in ascending date order with no gaps
-  bills.forEach(bill => {
-    const billDate = new Date(bill.date);
-    salesRows.push({
-      sr: String(srCounter++),
-      date: format(billDate, 'dd/MM/yyyy'),
-      item: bill.items.map(i => i.itemName).join(', '),
-      total: `Rs. ${bill.grandTotal.toFixed(2)}`
-    });
-    totalSales += bill.grandTotal;
-  });
-
-  // Then, add all payments in ascending date order with no gaps
-  customerPayments.forEach(payment => {
-    paymentRows.push({
-      date: format(new Date(payment.date), 'dd/MM/yyyy'),
-      amount: `Rs. ${payment.amount.toFixed(2)}`
-    });
-    totalPaid += payment.amount;
-  });
-
-  const maxRows = Math.max(salesRows.length, paymentRows.length);
-  const tableData: any[] = [];
-  for (let i = 0; i < maxRows; i++) {
-    tableData.push([
-      salesRows[i]?.sr ?? '',
-      salesRows[i]?.date ?? '',
-      salesRows[i]?.item ?? '',
-      salesRows[i]?.total ?? '',
-      paymentRows[i]?.date ?? '',
-      paymentRows[i]?.amount ?? ''
-    ]);
-  }
-
-  // Generate table
   autoTable(doc, {
-    head: [['Sr No', 'Date', 'Item Name', 'Total', 'Payment Date', 'Paid']],
+    head: [['Sr No', 'Date', 'Item', 'Quantity', 'Rate', 'Total Amt', 'Sr No', 'Payment Date', 'Amt Paid']],
     body: tableData,
     startY: 55,
     theme: 'grid',
-    styles: { fontSize: 10, cellPadding: 2 },
+    styles: { fontSize: 8.5, cellPadding: 1.8, valign: 'middle' },
     headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     columnStyles: {
-      0: { cellWidth: 15, halign: 'center' }, // Sr No
-      1: { cellWidth: 25, halign: 'center' }, // Date
-      2: { cellWidth: 45 }, // Item Name
-      3: { cellWidth: 25, halign: 'right' }, // Total
-      4: { cellWidth: 25, halign: 'center' }, // Payment Date
-      5: { cellWidth: 25, halign: 'right' }, // Paid
+      0: { cellWidth: 14, halign: 'center' },
+      1: { cellWidth: 26, halign: 'center' },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 20, halign: 'right' },
+      4: { cellWidth: 20, halign: 'right' },
+      5: { cellWidth: 28, halign: 'right' },
+      6: { cellWidth: 14, halign: 'center' },
+      7: { cellWidth: 32, halign: 'center' },
+      8: { cellWidth: 28, halign: 'right' }
     },
   });
 
@@ -246,7 +215,7 @@ export const generateMonthlyBalancePDF = async (
   // Add pending amount in red
   const pendingAmount = totalSales - totalPaid;
   doc.setTextColor(255, 0, 0);
-  doc.text(`Pending Amount: Rs. ${pendingAmount.toFixed(2)}`, 20, finalY + 30);
+  doc.text(`Pending Amount: ${formatPdfAmount(pendingAmount)}`, 20, finalY + 30);
   
   // Reset text color
   doc.setTextColor(0, 0, 0);
@@ -465,8 +434,9 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
   doc.text(`Pending Amount: ${formatPdfAmount(pendingAmount)}`, 14, finalY + 30);
   doc.setTextColor(0, 0, 0);
 
+  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
   doc.setFontSize(10);
-  doc.text('Thank you for your business!', 14, finalY + 42);
+  doc.text('Thank you for your business!', doc.internal.pageSize.getWidth() / 2, pageHeight - 20, { align: 'center' });
 
   try {
     const pdfOutput = doc.output('arraybuffer');

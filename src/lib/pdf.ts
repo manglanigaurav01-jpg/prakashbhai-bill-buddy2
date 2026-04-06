@@ -41,6 +41,15 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return btoa(binary);
 };
 
+const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(110, 110, 110);
+  doc.text(text, pageWidth / 2, y, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+};
+
 export const generateCustomerSummaryPDF = async (customerId: string, forceShare: boolean = false) => {
   try {
     const { getBillsByCustomer, getCustomerBalance, getPayments } = await import('@/lib/storage');
@@ -324,9 +333,11 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: Rs. ${bill.grandTotal.toFixed(2)}`, 20, finalY);
 
+    const pageHeight = doc.internal.pageSize.height;
+    addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Thank you for your business!', 105, doc.internal.pageSize.height - 20, { align: 'center' });
+    doc.text('Thank you for your business!', 105, pageHeight - 20, { align: 'center' });
 
     const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
 
@@ -480,9 +491,11 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: Rs. ${bill.grandTotal.toFixed(2)}`, 20, finalY);
 
+    const pageHeight = doc.internal.pageSize.height;
+    addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Thank you for your business!', 105, doc.internal.pageSize.height - 20, { align: 'center' });
+    doc.text('Thank you for your business!', 105, pageHeight - 20, { align: 'center' });
 
     const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
 
