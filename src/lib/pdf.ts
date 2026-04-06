@@ -258,21 +258,18 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
     const headerRgb = hexToRgb(settings.headerColor);
     const textRgb = hexToRgb(settings.textColor);
 
-    doc.setFontSize(18);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
-    doc.text(settings.companyName, 20, 20);
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text(bill.customerName, 20, 32);
+    doc.text(bill.customerName, 20, 20);
 
     doc.setFontSize(12);
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 44);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 30);
 
     if (bill.particulars) {
       doc.setFontSize(10);
-      doc.text(`Particulars: ${bill.particulars}`, 20, 54);
+      doc.text(`Particulars: ${bill.particulars}`, 20, 40);
     }
 
     const tableData = bill.items.map((item, index) => [
@@ -294,7 +291,7 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
         settings.tableHeaders.total
       ]],
       body: tableData,
-      startY: bill.particulars ? 64 : 54,
+      startY: bill.particulars ? 50 : 40,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3, textColor: textRgb },
       headStyles: { fillColor: headerRgb, textColor: 255, fontStyle: 'bold' },
@@ -417,21 +414,18 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
     const headerRgb = hexToRgb(settings.headerColor);
     const textRgb = hexToRgb(settings.textColor);
 
-    doc.setFontSize(18);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
-    doc.text(settings.companyName, 20, 20);
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text(bill.customerName, 20, 32);
+    doc.text(bill.customerName, 20, 20);
 
     doc.setFontSize(12);
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 44);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 30);
 
     if (bill.particulars) {
       doc.setFontSize(10);
-      doc.text(`Particulars: ${bill.particulars}`, 20, 54);
+      doc.text(`Particulars: ${bill.particulars}`, 20, 40);
     }
 
     const tableData = bill.items.map((item, index) => [
@@ -453,7 +447,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
         settings.tableHeaders.total
       ]],
       body: tableData,
-      startY: bill.particulars ? 64 : 54,
+      startY: bill.particulars ? 50 : 40,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3, textColor: textRgb },
       headStyles: { fillColor: headerRgb, textColor: 255, fontStyle: 'bold' },
