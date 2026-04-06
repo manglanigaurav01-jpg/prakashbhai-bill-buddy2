@@ -32,9 +32,13 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFontSize(12);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(110, 110, 110);
+  doc.setTextColor(170, 35, 35);
   doc.text(text, pageWidth / 2, y, { align: 'center' });
   doc.setTextColor(0, 0, 0);
+};
+
+const addPdfHeaderTagline = (doc: jsPDF, y: number = 20) => {
+  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', y);
 };
 
 type LastBalanceSalesRow = {
@@ -143,6 +147,7 @@ export const generateMonthlyBalancePDF = async (
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(customerName, 20, 20);
+  addPdfHeaderTagline(doc, 20);
   
   doc.setFontSize(14);
   doc.text('Customer Summary Report', 20, 30);
@@ -385,6 +390,7 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(customerName, 14, 18);
+  addPdfHeaderTagline(doc, 18);
 
   doc.setFontSize(14);
   doc.text('Last Balance Report', 14, 28);
@@ -434,7 +440,6 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
   doc.text(`Pending Amount: ${formatPdfAmount(pendingAmount)}`, 14, finalY + 30);
   doc.setTextColor(0, 0, 0);
 
-  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
   doc.setFontSize(10);
   doc.text('Thank you for your business!', doc.internal.pageSize.getWidth() / 2, pageHeight - 20, { align: 'center' });
 

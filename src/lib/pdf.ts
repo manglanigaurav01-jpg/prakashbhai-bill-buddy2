@@ -45,9 +45,13 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFontSize(12);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(110, 110, 110);
+  doc.setTextColor(170, 35, 35);
   doc.text(text, pageWidth / 2, y, { align: 'center' });
   doc.setTextColor(0, 0, 0);
+};
+
+const addPdfHeaderTagline = (doc: jsPDF, y: number = 20) => {
+  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', y);
 };
 
 export const generateCustomerSummaryPDF = async (customerId: string, forceShare: boolean = false) => {
@@ -67,6 +71,7 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(balance.customerName, 20, 20);
+    addPdfHeaderTagline(doc, 20);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
@@ -333,11 +338,9 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: Rs. ${bill.grandTotal.toFixed(2)}`, 20, finalY);
 
-    const pageHeight = doc.internal.pageSize.height;
-    addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Thank you for your business!', 105, pageHeight - 20, { align: 'center' });
+    doc.text('Thank you for your business!', 105, doc.internal.pageSize.height - 20, { align: 'center' });
 
     const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
 
@@ -429,6 +432,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
     doc.text(bill.customerName, 20, 20);
+    addPdfHeaderTagline(doc, 20);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
@@ -491,11 +495,9 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
     doc.setFont('helvetica', 'bold');
     doc.text(`Grand Total: Rs. ${bill.grandTotal.toFixed(2)}`, 20, finalY);
 
-    const pageHeight = doc.internal.pageSize.height;
-    addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', pageHeight - 28);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Thank you for your business!', 105, pageHeight - 20, { align: 'center' });
+    doc.text('Thank you for your business!', 105, doc.internal.pageSize.height - 20, { align: 'center' });
 
     const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
 
@@ -544,6 +546,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Pending Amounts Report', 20, 20);
+    addPdfHeaderTagline(doc, 20);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
@@ -667,6 +670,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Advance Amounts Report', 20, 20);
+    addPdfHeaderTagline(doc, 20);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
