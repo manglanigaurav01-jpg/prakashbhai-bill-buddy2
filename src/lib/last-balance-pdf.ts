@@ -37,54 +37,8 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
   doc.setTextColor(0, 0, 0);
 };
 
-const drawCenteredSmileEmoji = (doc: jsPDF, y: number) => {
-  const centerX = doc.internal.pageSize.getWidth() / 2;
-  const radius = 4.2;
-
-  doc.setDrawColor(220, 160, 25);
-  doc.setFillColor(255, 223, 92);
-  doc.circle(centerX, y, radius, 'FD');
-
-  doc.setFillColor(255, 170, 185);
-  doc.circle(centerX - 2.25, y + 0.25, 0.48, 'F');
-  doc.circle(centerX + 2.25, y + 0.25, 0.48, 'F');
-
-  doc.setLineWidth(0.55);
-  doc.setDrawColor(80, 55, 10);
-
-  doc.lines(
-    [
-      [0.7, -0.45],
-      [0.8, 0.45]
-    ],
-    centerX - 1.8,
-    y - 0.9
-  );
-
-  doc.lines(
-    [
-      [0.8, 0.45],
-      [0.7, -0.45]
-    ],
-    centerX + 0.3,
-    y - 0.9
-  );
-
-  doc.lines(
-    [
-      [1.15, 1.25],
-      [1.25, 0.45],
-      [1.15, -0.45],
-      [0.9, -0.95]
-    ],
-    centerX - 2.2,
-    y + 1.45
-  );
-};
-
 const addPdfHeaderTagline = (doc: jsPDF, y: number = 20) => {
   addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA!', y);
-  drawCenteredSmileEmoji(doc, y + 7.5);
 };
 
 const addPdfFooterLines = (doc: jsPDF, centerX?: number) => {
@@ -97,8 +51,7 @@ const addPdfFooterLines = (doc: jsPDF, centerX?: number) => {
   doc.setTextColor(0, 0, 0);
   doc.text('Thank you for your business!', x, pageHeight - 28, { align: 'center' });
 
-  addCenteredPdfLine(doc, 'Love Is God , God Is Love!', pageHeight - 18);
-  drawCenteredSmileEmoji(doc, pageHeight - 9.5);
+  addCenteredPdfLine(doc, "With God's blessings, thank you for your trust.", pageHeight - 18);
 };
 
 type LastBalanceSalesRow = {
