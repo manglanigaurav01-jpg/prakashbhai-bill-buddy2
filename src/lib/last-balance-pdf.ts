@@ -39,45 +39,46 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
 
 const drawCenteredSmileEmoji = (doc: jsPDF, y: number) => {
   const centerX = doc.internal.pageSize.getWidth() / 2;
-  const radius = 3.3;
+  const radius = 4.2;
 
-  doc.setDrawColor(230, 170, 20);
-  doc.setFillColor(255, 221, 87);
+  doc.setDrawColor(220, 160, 25);
+  doc.setFillColor(255, 223, 92);
   doc.circle(centerX, y, radius, 'FD');
 
-  doc.setFillColor(255, 170, 170);
-  doc.circle(centerX - 1.7, y + 0.2, 0.38, 'F');
-  doc.circle(centerX + 1.7, y + 0.2, 0.38, 'F');
+  doc.setFillColor(255, 170, 185);
+  doc.circle(centerX - 2.25, y + 0.25, 0.48, 'F');
+  doc.circle(centerX + 2.25, y + 0.25, 0.48, 'F');
 
-  doc.setLineWidth(0.35);
+  doc.setLineWidth(0.55);
   doc.setDrawColor(80, 55, 10);
 
   doc.lines(
     [
-      [0.55, -0.35],
-      [0.55, 0.35]
+      [0.7, -0.45],
+      [0.8, 0.45]
     ],
-    centerX - 1.4,
-    y - 0.75
+    centerX - 1.8,
+    y - 0.9
   );
 
   doc.lines(
     [
-      [0.55, 0.35],
-      [0.55, -0.35]
+      [0.8, 0.45],
+      [0.7, -0.45]
     ],
     centerX + 0.3,
-    y - 0.75
+    y - 0.9
   );
 
   doc.lines(
     [
-      [0.9, 0.85],
-      [1.5, 0],
-      [0.9, -0.85]
+      [1.15, 1.25],
+      [1.25, 0.45],
+      [1.15, -0.45],
+      [0.9, -0.95]
     ],
-    centerX - 1.65,
-    y + 1.15
+    centerX - 2.2,
+    y + 1.45
   );
 };
 
