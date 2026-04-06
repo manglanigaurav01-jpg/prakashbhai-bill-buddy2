@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { Input } from "@/components/ui/input";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Customer } from '@/types';
 import { getCustomers, saveCustomer } from '@/lib/storage';
@@ -20,10 +20,12 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   const [customers] = useState<Customer[]>(() => getCustomers());
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
+  const normalizedSearchQuery = normalizeText(searchQuery);
 
-  const filteredCustomers = searchQuery.trim()
+  const filteredCustomers = normalizedSearchQuery
     ? customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        normalizeText(customer.name).includes(normalizedSearchQuery)
       )
     : [];
 
@@ -107,12 +109,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder="Search customers..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-          />
+        <Command shouldFilter={false}>
           <CommandList>
             {filteredCustomers.length > 0 && (
               <CommandGroup heading="Customers">
@@ -129,8 +126,8 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
               </CommandGroup>
             )}
 
-            {searchQuery && !filteredCustomers.some(customer =>
-              customer.name.toLowerCase() === searchQuery.toLowerCase()
+            {normalizedSearchQuery && !customers.some(customer =>
+              normalizeText(customer.name) === normalizedSearchQuery
             ) && (
               <CommandGroup heading="Actions">
                 <CommandItem
@@ -143,7 +140,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
               </CommandGroup>
             )}
 
-            {filteredCustomers.length === 0 && !searchQuery && (
+            {filteredCustomers.length === 0 && !normalizedSearchQuery && (
               <CommandEmpty>Start typing to search customers...</CommandEmpty>
             )}
           </CommandList>

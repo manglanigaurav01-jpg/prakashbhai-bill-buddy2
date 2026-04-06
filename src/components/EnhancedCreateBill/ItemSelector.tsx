@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { Input } from "@/components/ui/input";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BillItem } from '@/types';
 import { getItems, saveItem } from '@/lib/storage';
@@ -22,10 +22,12 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
   const [items] = useState(() => getItems());
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
+  const normalizedSearchQuery = normalizeText(searchQuery);
 
-  const filteredItems = searchQuery.trim()
+  const filteredItems = normalizedSearchQuery
     ? items.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        normalizeText(item.name).includes(normalizedSearchQuery)
       )
     : [];
 
@@ -108,12 +110,7 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder="Search items..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-          />
+        <Command shouldFilter={false}>
           <CommandList>
             {filteredItems.length > 0 && (
               <CommandGroup heading="Items">
@@ -135,8 +132,8 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
               </CommandGroup>
             )}
 
-            {searchQuery && !filteredItems.some(item =>
-              item.name.toLowerCase() === searchQuery.toLowerCase()
+            {normalizedSearchQuery && !items.some(item =>
+              normalizeText(item.name) === normalizedSearchQuery
             ) && (
               <CommandGroup heading="Actions">
                 <CommandItem
@@ -149,7 +146,7 @@ export const ItemSelector: React.FC<ItemSelectorProps> = ({
               </CommandGroup>
             )}
 
-            {filteredItems.length === 0 && !searchQuery && (
+            {filteredItems.length === 0 && !normalizedSearchQuery && (
               <CommandEmpty>Start typing to search items...</CommandEmpty>
             )}
           </CommandList>

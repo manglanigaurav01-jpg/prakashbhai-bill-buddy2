@@ -35,16 +35,20 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
   const [customerSectionOpen, setCustomerSectionOpen] = useState(true);
   const [itemsSectionOpen, setItemsSectionOpen] = useState(true);
   const [discountSectionOpen, setDiscountSectionOpen] = useState(false);
-  const [formProgress, setFormProgress] = useState(0);
 
-  // Calculate form completion progress
-  React.useEffect(() => {
-    let progress = 0;
-    if (selectedCustomer) progress += 25;
-    if (billItems.some(item => item.itemName && item.quantity > 0 && item.rate > 0)) progress += 50;
-    if (billDate) progress += 25;
-    setFormProgress(progress);
-  }, [selectedCustomer, billItems, billDate]);
+  const completedItemCount = billItems.filter(
+    item => item.itemName.trim() && item.quantity > 0 && item.rate > 0
+  ).length;
+  const hasStartedItems = billItems.some(
+    item => item.itemName.trim() || item.quantity > 0 || item.rate > 0
+  );
+  const allItemsComplete = billItems.length > 0 && completedItemCount === billItems.length;
+
+  const formProgress = (
+    (selectedCustomer ? 25 : 0) +
+    (allItemsComplete ? 50 : hasStartedItems ? 25 : 0) +
+    (billDate ? 25 : 0)
+  );
 
   const handleQuantityChange = (index: number, value: string) => {
     const quantity = parseFloat(value) || 0;
@@ -361,12 +365,12 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
                     <div>
                       <CardTitle className="text-lg">Items & Pricing</CardTitle>
                       <CardDescription>
-                        {billItems.filter(item => item.itemName && item.quantity > 0 && item.rate > 0).length} of {billItems.length} items completed
+                        {completedItemCount} of {billItems.length} items completed
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge variant={billItems.some(item => item.itemName && item.quantity > 0 && item.rate > 0) ? "default" : "secondary"}>
-                    {billItems.some(item => item.itemName && item.quantity > 0 && item.rate > 0) ? 'In Progress' : 'Required'}
+                  <Badge variant={allItemsComplete ? "default" : hasStartedItems ? "outline" : "secondary"}>
+                    {allItemsComplete ? 'Complete' : hasStartedItems ? 'In Progress' : 'Required'}
                   </Badge>
                 </div>
               </CardHeader>
