@@ -38,7 +38,22 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
 };
 
 const addPdfHeaderTagline = (doc: jsPDF, y: number = 20) => {
-  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA', y);
+  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA!', y);
+  addCenteredPdfLine(doc, '😊', y + 8);
+};
+
+const addPdfFooterLines = (doc: jsPDF, centerX?: number) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const x = centerX ?? (pageWidth / 2);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  doc.text('Thank you for your business!', x, pageHeight - 28, { align: 'center' });
+
+  addCenteredPdfLine(doc, 'Love Is God , God Is Love!', pageHeight - 18);
+  addCenteredPdfLine(doc, '😊', pageHeight - 10);
 };
 
 type LastBalanceSalesRow = {
@@ -148,14 +163,14 @@ export const generateMonthlyBalancePDF = async (
   // Header
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(customerName, 20, 28);
+  doc.text(customerName, 20, 34);
   
   doc.setFontSize(14);
-  doc.text('Customer Summary Report', 20, 38);
+  doc.text('Customer Summary Report', 20, 44);
 
   doc.setFontSize(12);
-  doc.text(`Month: ${format(monthDate, 'MMMM yyyy')}`, 20, 48);
-  doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 55);
+  doc.text(`Month: ${format(monthDate, 'MMMM yyyy')}`, 20, 54);
+  doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 61);
 
   // Get payments for this customer for the selected month
   const payments = getPayments();
@@ -187,7 +202,7 @@ export const generateMonthlyBalancePDF = async (
   autoTable(doc, {
     head: [['Sr No', 'Date', 'Item', 'Quantity', 'Rate', 'Total Amt', 'Sr No', 'Payment Date', 'Amt Paid']],
     body: tableData,
-    startY: 63,
+    startY: 69,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 1.8, valign: 'middle' },
     headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
@@ -226,10 +241,7 @@ export const generateMonthlyBalancePDF = async (
   // Reset text color
   doc.setTextColor(0, 0, 0);
   
-  // Add thank you note
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Thank you for your business!', 20, finalY + 45);
+  addPdfFooterLines(doc);
 
   try {
     // Generate PDF data
@@ -392,19 +404,19 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
 
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(customerName, 14, 28);
+  doc.text(customerName, 14, 34);
 
   doc.setFontSize(14);
-  doc.text('Last Balance Report', 14, 38);
+  doc.text('Last Balance Report', 14, 44);
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatPdfDate(new Date())}`, 14, 48);
+  doc.text(`Date: ${formatPdfDate(new Date())}`, 14, 54);
 
   autoTable(doc, {
     head: [['Sr No', 'Date', 'Item', 'Quantity', 'Rate', 'Total Amt', 'Sr No', 'Payment Date', 'Amt Paid']],
     body: tableData,
-    startY: 58,
+    startY: 64,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 1.8, valign: 'middle' },
     headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
@@ -442,8 +454,7 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
   doc.text(`Pending Amount: ${formatPdfAmount(pendingAmount)}`, 14, finalY + 30);
   doc.setTextColor(0, 0, 0);
 
-  doc.setFontSize(10);
-  doc.text('Thank you for your business!', doc.internal.pageSize.getWidth() / 2, pageHeight - 20, { align: 'center' });
+  addPdfFooterLines(doc, doc.internal.pageSize.getWidth() / 2);
 
   try {
     const pdfOutput = doc.output('arraybuffer');
