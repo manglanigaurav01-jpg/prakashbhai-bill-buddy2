@@ -30,7 +30,7 @@ const formatPdfAmount = (value: number) => `Rs. ${value.toFixed(2)}`;
 
 const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  doc.setFontSize(12);
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(170, 35, 35);
   doc.text(text, pageWidth / 2, y, { align: 'center' });
@@ -143,18 +143,19 @@ export const generateMonthlyBalancePDF = async (
 
   const doc = new jsPDF({ orientation: 'landscape' });
 
+  addPdfHeaderTagline(doc, 14);
+
   // Header
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(customerName, 20, 20);
-  addPdfHeaderTagline(doc, 20);
+  doc.text(customerName, 20, 28);
   
   doc.setFontSize(14);
-  doc.text('Customer Summary Report', 20, 30);
+  doc.text('Customer Summary Report', 20, 38);
 
   doc.setFontSize(12);
-  doc.text(`Month: ${format(monthDate, 'MMMM yyyy')}`, 20, 40);
-  doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 47);
+  doc.text(`Month: ${format(monthDate, 'MMMM yyyy')}`, 20, 48);
+  doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 55);
 
   // Get payments for this customer for the selected month
   const payments = getPayments();
@@ -186,7 +187,7 @@ export const generateMonthlyBalancePDF = async (
   autoTable(doc, {
     head: [['Sr No', 'Date', 'Item', 'Quantity', 'Rate', 'Total Amt', 'Sr No', 'Payment Date', 'Amt Paid']],
     body: tableData,
-    startY: 55,
+    startY: 63,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 1.8, valign: 'middle' },
     headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
@@ -387,22 +388,23 @@ export const generateLastBalancePDF = async (customerId: string, customerName: s
 
   const doc = new jsPDF({ orientation: 'landscape' });
 
+  addPdfHeaderTagline(doc, 14);
+
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(customerName, 14, 18);
-  addPdfHeaderTagline(doc, 18);
+  doc.text(customerName, 14, 28);
 
   doc.setFontSize(14);
-  doc.text('Last Balance Report', 14, 28);
+  doc.text('Last Balance Report', 14, 38);
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatPdfDate(new Date())}`, 14, 36);
+  doc.text(`Date: ${formatPdfDate(new Date())}`, 14, 48);
 
   autoTable(doc, {
     head: [['Sr No', 'Date', 'Item', 'Quantity', 'Rate', 'Total Amt', 'Sr No', 'Payment Date', 'Amt Paid']],
     body: tableData,
-    startY: 44,
+    startY: 58,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 1.8, valign: 'middle' },
     headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },

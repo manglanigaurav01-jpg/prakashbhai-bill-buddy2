@@ -43,7 +43,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
 
 const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  doc.setFontSize(12);
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(170, 35, 35);
   doc.text(text, pageWidth / 2, y, { align: 'center' });
@@ -67,15 +67,16 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
 
     const doc = new jsPDF();
 
+    addPdfHeaderTagline(doc, 14);
+
     // Header - Customer Name (top, large font)
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(balance.customerName, 20, 20);
-    addPdfHeaderTagline(doc, 20);
+    doc.text(balance.customerName, 20, 28);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('Customer Summary Report', 20, 32);
+    doc.text('Customer Summary Report', 20, 38);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
@@ -272,18 +273,20 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
     const headerRgb = hexToRgb(settings.headerColor);
     const textRgb = hexToRgb(settings.textColor);
 
+    addPdfHeaderTagline(doc, 14);
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
-    doc.text(bill.customerName, 20, 20);
+    doc.text(bill.customerName, 20, 28);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 30);
+    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 38);
 
     if (bill.particulars) {
       doc.setFontSize(10);
-      doc.text(`Particulars: ${bill.particulars}`, 20, 40);
+      doc.text(`Particulars: ${bill.particulars}`, 20, 48);
     }
 
     const tableData = bill.items.map((item, index) => [
@@ -305,7 +308,7 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
         settings.tableHeaders.total
       ]],
       body: tableData,
-      startY: bill.particulars ? 50 : 40,
+      startY: bill.particulars ? 58 : 48,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3, textColor: textRgb },
       headStyles: { fillColor: headerRgb, textColor: 255, fontStyle: 'bold' },
@@ -428,19 +431,20 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
     const headerRgb = hexToRgb(settings.headerColor);
     const textRgb = hexToRgb(settings.textColor);
 
+    addPdfHeaderTagline(doc, 14);
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(textRgb[0], textRgb[1], textRgb[2]);
-    doc.text(bill.customerName, 20, 20);
-    addPdfHeaderTagline(doc, 20);
+    doc.text(bill.customerName, 20, 28);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 30);
+    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 38);
 
     if (bill.particulars) {
       doc.setFontSize(10);
-      doc.text(`Particulars: ${bill.particulars}`, 20, 40);
+      doc.text(`Particulars: ${bill.particulars}`, 20, 48);
     }
 
     const tableData = bill.items.map((item, index) => [
@@ -462,7 +466,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
         settings.tableHeaders.total
       ]],
       body: tableData,
-      startY: bill.particulars ? 50 : 40,
+      startY: bill.particulars ? 58 : 48,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3, textColor: textRgb },
       headStyles: { fillColor: headerRgb, textColor: 255, fontStyle: 'bold' },
@@ -543,14 +547,15 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
   try {
     const doc = new jsPDF();
 
+    addPdfHeaderTagline(doc, 14);
+
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Pending Amounts Report', 20, 20);
-    addPdfHeaderTagline(doc, 20);
+    doc.text('Pending Amounts Report', 20, 30);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date())}`, 20, 35);
+    doc.text(`Date: ${formatDate(new Date())}`, 20, 42);
 
     const tableData = pendingCustomers.map((customer, index) => [
       index + 1,
@@ -561,7 +566,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
     autoTable(doc, {
       head: [['Sr No', 'Customer Name', 'Pending Amount']],
       body: tableData,
-      startY: 50,
+      startY: 55,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
@@ -667,14 +672,15 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
   try {
     const doc = new jsPDF();
 
+    addPdfHeaderTagline(doc, 14);
+
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Advance Amounts Report', 20, 20);
-    addPdfHeaderTagline(doc, 20);
+    doc.text('Advance Amounts Report', 20, 30);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date())}`, 20, 35);
+    doc.text(`Date: ${formatDate(new Date())}`, 20, 42);
 
     const tableData = advanceCustomers.map((customer, index) => [
       index + 1,
@@ -685,7 +691,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
     autoTable(doc, {
       head: [['Sr No', 'Customer Name', 'Advance Amount']],
       body: tableData,
-      startY: 50,
+      startY: 55,
       theme: 'grid',
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [52, 73, 190], textColor: 255, fontStyle: 'bold' },
