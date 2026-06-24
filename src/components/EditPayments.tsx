@@ -16,6 +16,8 @@ import { Customer, Payment } from '@/types';
 import { SwipeableItem } from '@/components/SwipeableItem';
 import { hapticMedium, hapticError, hapticSuccess, hapticWarning } from '@/lib/haptics';
 import { validatePaymentDateWithFutureWarning, validateLargeAmount } from '@/lib/validation';
+import { parseStoredDateToLocal, toStoredDateISO } from '@/lib/stored-date';
+import { formatDisplayDate } from '@/lib/formatters';
 
 
 interface EditPaymentsProps {
@@ -38,6 +40,7 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
   const [editingDate, setEditingDate] = useState<Date>(new Date());
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingAmount, setEditingAmount] = useState<string>('');
+  const [editingNote, setEditingNote] = useState<string>('');
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
@@ -78,13 +81,13 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
     const q = query.trim().toLowerCase();
     const filtered = payments.filter(p => {
       const matchesText = !q || p.customerName.toLowerCase().includes(q);
-      const matchesDate = !filterDate || (new Date(p.date).toDateString() === filterDate.toDateString());
+      const matchesDate = !filterDate || (parseStoredDateToLocal(p.date).toDateString() === filterDate.toDateString());
       return matchesText && matchesDate;
     });
     const sorted = [...filtered].sort((a, b) => {
       if (sortKey === 'date') {
-        const da = new Date(a.date).getTime();
-        const db = new Date(b.date).getTime();
+        const da = parseStoredDateToLocal(a.date).getTime();
+        const db = parseStoredDateToLocal(b.date).getTime();
         return sortAsc ? da - db : db - da;
       }
       if (sortKey === 'customerName') {
@@ -100,10 +103,11 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
 
   const startEdit = (payment: Payment) => {
     setEditing(payment);
-    setEditingDate(new Date(payment.date));
+    setEditingDate(parseStoredDateToLocal(payment.date));
     const cust = customers.find(c => c.id === payment.customerId) || null;
     setEditingCustomer(cust);
     setEditingAmount(payment.amount.toString());
+    setEditingNote(payment.note || '');
   };
 
   const saveEdit = async () => {
@@ -145,7 +149,8 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
       customerId: editingCustomer.id,
       customerName: editingCustomer.name,
       amount: amt,
-      date: editingDate.toISOString().split('T')[0],
+      date: toStoredDateISO(editingDate),
+      note: editingNote.trim() || undefined,
     });
     if (updated) {
       setPayments(getPayments());
@@ -279,12 +284,6 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
     setSortAsc(false);
     toast({ title: 'Filters Cleared', description: 'All filters have been reset' });
   };
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
 
   if (loading) {
     return (
@@ -404,9 +403,10 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
               <Card className="hover:shadow-md transition-all duration-200">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="text-sm text-muted-foreground">{formatDate(new Date(p.date))}</div>
+                    <div className="text-sm text-muted-foreground">{formatDisplayDate(p.date)}</div>
                     <div className="text-lg font-semibold">{p.customerName}</div>
                     <div className="text-sm text-muted-foreground">Amount: ₹{p.amount.toFixed(2)}</div>
+                    {p.note && <div className="text-xs text-muted-foreground">{p.note}</div>}
                   </div>
                   <div>
                     <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
@@ -450,6 +450,10 @@ export const EditPayments: React.FC<EditPaymentsProps> = ({ onNavigate }) => {
                 <div>
                   <Label>Amount</Label>
                   <Input type="number" step="0.01" value={editingAmount} onChange={(e) => setEditingAmount(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Additional Information (Optional)</Label>
+                  <Input value={editingNote} onChange={(e) => setEditingNote(e.target.value)} placeholder="Write additional information" />
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>

@@ -1,3 +1,4 @@
+import { parseStoredDateToLocal, toStoredDateISO } from './stored-date';
 export interface MigrationContext {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
@@ -28,6 +29,41 @@ const migrations: Migration[] = [
       ensureArray('prakash_items');
       ensureArray('prakash_item_rate_history');
     }
+  },
+  {
+    version: '1.1.0',
+    up: (ctx) => {
+      const normalizeDateField = <T extends { date: string }>(rows: T[]): T[] => {
+        return rows.map((row) => ({
+          ...row,
+          date: toStoredDateISO(parseStoredDateToLocal(row.date)),
+        }));
+      };
+
+      const rawBills = ctx.getItem('prakash_bills');
+      if (rawBills) {
+        try {
+          const bills = JSON.parse(rawBills);
+          if (Array.isArray(bills)) {
+            ctx.setItem('prakash_bills', JSON.stringify(normalizeDateField(bills)));
+          }
+        } catch {
+          // Keep existing data untouched if malformed.
+        }
+      }
+
+      const rawPayments = ctx.getItem('prakash_payments');
+      if (rawPayments) {
+        try {
+          const payments = JSON.parse(rawPayments);
+          if (Array.isArray(payments)) {
+            ctx.setItem('prakash_payments', JSON.stringify(normalizeDateField(payments)));
+          }
+        } catch {
+          // Keep existing data untouched if malformed.
+        }
+      }
+    },
   },
 ];
 

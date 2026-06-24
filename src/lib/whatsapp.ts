@@ -1,6 +1,7 @@
 import { Bill, Payment } from '@/types';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
+import { formatDisplayDate } from './formatters';
 
 export const shareViaWhatsApp = async (phoneNumber: string, message: string, fileUrl?: string) => {
   try {
@@ -35,7 +36,7 @@ export const createBillMessage = (bill: Bill): string => {
   
   let message = `📄 *Bill from Prakash Bhai Bill Buddy*\n\n`;
   message += `Customer: ${bill.customerName}\n`;
-  message += `Date: ${new Date(bill.date).toLocaleDateString('en-IN')}\n`;
+  message += `Date: ${formatDisplayDate(bill.date)}\n`;
   if (bill.particulars) {
     message += `Details: ${bill.particulars}\n`;
   }
@@ -59,5 +60,5 @@ export const createPaymentReminderMessage = (customerName: string, pendingAmount
 };
 
 export const createPaymentConfirmationMessage = (payment: Payment): string => {
-  return `✅ *Payment Received*\n\nDear ${payment.customerName},\n\nWe have received your payment of *₹${payment.amount.toFixed(2)}*\n\nDate: ${new Date(payment.date).toLocaleDateString('en-IN')}\n${payment.paymentMethod ? `Method: ${payment.paymentMethod}` : ''}\n\nThank you for your payment! 🙏\n\n- Prakash Bhai Bill Buddy`;
+  return `✅ *Payment Received*\n\nDear ${payment.customerName},\n\nWe have received your payment of *₹${payment.amount.toFixed(2)}*\n\nDate: ${formatDisplayDate(payment.date)}\n${payment.paymentMethod ? `Method: ${payment.paymentMethod}` : ''}\n\nThank you for your payment! 🙏\n\n- Prakash Bhai Bill Buddy`;
 };

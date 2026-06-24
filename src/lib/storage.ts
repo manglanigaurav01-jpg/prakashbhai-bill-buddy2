@@ -1,6 +1,7 @@
 import { Customer, Bill, Payment, CustomerBalance, ItemMaster, ItemRateHistory, ItemUsage } from '@/types';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
+import { parseStoredDateToLocal } from './stored-date';
 
 export interface BusinessAnalytics {
   version: string;
@@ -239,6 +240,28 @@ export const updateBusinessAnalytics = async () => {
 };
 
 export const saveBill = (bill: Omit<Bill, 'id' | 'createdAt'>): Bill => {
+  if (!bill.customerId || !bill.customerName?.trim()) {
+    throw new Error('INVALID_BILL_CUSTOMER');
+  }
+  if (!Number.isFinite(bill.grandTotal) || bill.grandTotal < 0) {
+    throw new Error('INVALID_BILL_TOTAL');
+  }
+  if (!Number.isFinite(new Date(bill.date).getTime())) {
+    throw new Error('INVALID_BILL_DATE');
+  }
+  const hasInvalidItem = bill.items.some(
+    (item) =>
+      !item.itemName?.trim() ||
+      !Number.isFinite(item.quantity) ||
+      !Number.isFinite(item.rate) ||
+      !Number.isFinite(item.total) ||
+      item.quantity <= 0 ||
+      item.rate <= 0
+  );
+  if (hasInvalidItem) {
+    throw new Error('INVALID_BILL_ITEMS');
+  }
+
   const bills = getBills();
   const newBill: Bill = {
     ...bill,
@@ -256,6 +279,9 @@ export const updateBill = (billId: string, updates: Partial<Omit<Bill, 'id' | 'c
   const bills = getBills();
   const index = bills.findIndex(b => b.id === billId);
   if (index === -1) return null;
+  if (updates.date && !Number.isFinite(new Date(updates.date).getTime())) {
+    throw new Error('INVALID_BILL_DATE');
+  }
   const oldBill = bills[index];
   const updated: Bill = {
     ...oldBill,
@@ -293,6 +319,15 @@ export const deleteBill = (billId: string): void => {
 };
 
 export const savePayment = (payment: Omit<Payment, 'id' | 'createdAt'>): Payment => {
+  if (!payment.customerId || !payment.customerName?.trim()) {
+    throw new Error('INVALID_PAYMENT_CUSTOMER');
+  }
+  if (!Number.isFinite(payment.amount) || payment.amount <= 0) {
+    throw new Error('INVALID_PAYMENT_AMOUNT');
+  }
+  if (!Number.isFinite(new Date(payment.date).getTime())) {
+    throw new Error('INVALID_PAYMENT_DATE');
+  }
   const payments = getPayments();
   const newPayment: Payment = {
     ...payment,
@@ -314,7 +349,9 @@ export const recordPayment = (customerId: string, customerName: string, amount: 
 };
 
 export const getPaymentHistory = (): Payment[] => {
-  return getPayments().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return getPayments().sort(
+    (a, b) => parseStoredDateToLocal(b.date).getTime() - parseStoredDateToLocal(a.date).getTime()
+  );
 };
 
 export const deletePayment = (paymentId: string): void => {
@@ -343,10 +380,47 @@ export const deletePayment = (paymentId: string): void => {
   window.dispatchEvent(new Event('storage'));
 };
 
+export const resetCustomerHistory = (customerId: string): { deletedBills: number; deletedPayments: number } => {
+  const customer = getCustomers().find(c => c.id === customerId);
+  if (!customer) {
+    throw new Error('CUSTOMER_NOT_FOUND');
+  }
+
+  const bills = getBills();
+  const payments = getPayments();
+  const billsToDelete = bills.filter(bill => bill.customerId === customerId);
+  const paymentsToDelete = payments.filter(payment => payment.customerId === customerId);
+
+  if (billsToDelete.length === 0 && paymentsToDelete.length === 0) {
+    return { deletedBills: 0, deletedPayments: 0 };
+  }
+
+  localStorage.setItem(
+    STORAGE_KEYS.BILLS,
+    JSON.stringify(bills.filter(bill => bill.customerId !== customerId))
+  );
+  localStorage.setItem(
+    STORAGE_KEYS.PAYMENTS,
+    JSON.stringify(payments.filter(payment => payment.customerId !== customerId))
+  );
+  window.dispatchEvent(new Event('storage'));
+
+  return {
+    deletedBills: billsToDelete.length,
+    deletedPayments: paymentsToDelete.length,
+  };
+};
+
 export const updatePayment = (paymentId: string, updates: Partial<Omit<Payment, 'id' | 'createdAt'>>): Payment | null => {
   const payments = getPayments();
   const index = payments.findIndex(p => p.id === paymentId);
   if (index === -1) return null;
+  if (updates.date && !Number.isFinite(new Date(updates.date).getTime())) {
+    throw new Error('INVALID_PAYMENT_DATE');
+  }
+  if (typeof updates.amount === 'number' && (!Number.isFinite(updates.amount) || updates.amount <= 0)) {
+    throw new Error('INVALID_PAYMENT_AMOUNT');
+  }
   const old = payments[index];
   const updated: Payment = { ...old, ...updates };
   payments[index] = updated;

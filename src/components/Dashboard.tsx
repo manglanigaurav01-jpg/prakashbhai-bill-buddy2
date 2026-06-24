@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Users, Calculator, CreditCard, TrendingUp, Package, Settings as SettingsIcon, Edit3, Sun, Moon, BarChart, Search, RecycleIcon } from "lucide-react";
+import { FileText, Users, Calculator, CreditCard, TrendingUp, Package, Settings as SettingsIcon, Edit3, Sun, Moon, BarChart, Search, RecycleIcon, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useTheme } from "@/lib/theme-manager";
@@ -106,6 +106,14 @@ const menuItems: MenuItem[] = [
     icon: RecycleIcon,
     color: 'bg-gray-50 border-gray-200 text-gray-700',
     hoverColor: 'hover:bg-gray-100 hover:border-gray-300'
+  },
+  {
+    id: 'resetCustomerHistory',
+    title: 'Reset History',
+    description: 'Delete one customer history',
+    icon: Trash2,
+    color: 'bg-red-50 border-red-200 text-red-700',
+    hoverColor: 'hover:bg-red-100 hover:border-red-300'
   }
 ];
 

@@ -17,6 +17,7 @@ import { generateBillPDF } from "@/lib/pdf";
 import { Customer, BillItem } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { validateCustomerName, validateItemName, validateItemRate, validateItemQuantity, validateBillDate, validateForm, ValidationResult } from "@/lib/validation";
+import { toStoredDateISO } from '@/lib/stored-date';
 
 interface CreateBillProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -338,7 +339,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       saveBill({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
-        date: date.toISOString().split('T')[0],
+        date: toStoredDateISO(date),
         particulars,
         items: itemsToSave,
         grandTotal: itemsToSave.reduce((sum, item) => sum + item.total, 0),
@@ -417,7 +418,7 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
       const bill = saveBill({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
-        date: date.toISOString().split('T')[0],
+        date: toStoredDateISO(date),
         particulars,
         items: itemsToSave,
         grandTotal: itemsToSave.reduce((sum, item) => sum + item.total, 0),
@@ -512,9 +513,9 @@ export const CreateBill = ({ onNavigate }: CreateBillProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="particulars">Particulars</Label>
+                <Label htmlFor="particulars">Note</Label>
                 <Input
-                  placeholder="Bill description"
+                  placeholder="Write a note (optional)"
                   value={particulars}
                   onChange={(e) => setParticulars(e.target.value)}
                   className="min-h-[44px] touch-manipulation"

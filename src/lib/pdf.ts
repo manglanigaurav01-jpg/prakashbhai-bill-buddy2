@@ -6,6 +6,10 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { saveFileToCustomerFolder } from './filesystem-utils';
 import { logError } from './error-logger';
+import { formatDateForFilename, formatDisplayDate } from './formatters';
+import { parseStoredDateToLocal } from './stored-date';
+import { getPdfLineSettings } from './pdf-line-settings';
+import { format } from 'date-fns';
 
 // Constants for Filesystem
 const FILESYSTEM_DIR = Directory.Cache;
@@ -25,12 +29,10 @@ const _writeAndSharePDF = async (fileName: string, pdfData: ArrayBuffer) => {
   return fileUri;
 };
 
-const formatDate = (date: Date) => {
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+const formatDate = (date: Date | string) => formatDisplayDate(date);
+const sanitizeFilePart = (value: string) => value.replace(/[\\/:*?"<>|]/g, '').trim();
+const billDateForName = (date: string | Date) => format(typeof date === 'string' ? parseStoredDateToLocal(date) : date, 'dd-MMM-yyyy');
+const todayForName = () => format(new Date(), 'dd-MMM-yyyy');
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
@@ -51,19 +53,27 @@ const addCenteredPdfLine = (doc: jsPDF, text: string, y: number) => {
 };
 
 const addPdfHeaderTagline = (doc: jsPDF, y: number = 20) => {
-  addCenteredPdfLine(doc, 'SHUKRANA MUSKURANA!', y);
+  const { headerLine } = getPdfLineSettings();
+  const lines = headerLine.replace(/\r\n/g, '\n').split('\n').slice(0, 3);
+  let lineY = y;
+  lines.forEach((line) => {
+    if (line.trim()) {
+      addCenteredPdfLine(doc, line, lineY);
+      lineY += 6;
+    }
+  });
 };
 
 const addPdfFooterLines = (doc: jsPDF) => {
-  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.height;
+  const { footerLine } = getPdfLineSettings();
+  const lines = footerLine.replace(/\r\n/g, '\n').split('\n').slice(0, 3).filter((line) => line.trim());
+  if (lines.length === 0) return;
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.text('Thank you for your business!', pageWidth / 2, pageHeight - 28, { align: 'center' });
-
-  addCenteredPdfLine(doc, "With God's blessings, thank you for your trust.", pageHeight - 18);
+  const baseY = pageHeight - (lines.length - 1) * 6 - 12;
+  lines.forEach((line, index) => {
+    addCenteredPdfLine(doc, line, baseY + index * 6);
+  });
 };
 
 export const generateCustomerSummaryPDF = async (customerId: string, forceShare: boolean = false) => {
@@ -113,10 +123,10 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
     }
 
     const billsSorted = [...bills].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      (a, b) => parseStoredDateToLocal(a.date).getTime() - parseStoredDateToLocal(b.date).getTime()
     );
     const paymentsSorted = [...payments].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      (a, b) => parseStoredDateToLocal(a.date).getTime() - parseStoredDateToLocal(b.date).getTime()
     );
     let paymentIndex = 0;
 
@@ -126,13 +136,13 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
       let jama = '-';
       if (paymentIndex < paymentsSorted.length) {
         const payment = paymentsSorted[paymentIndex++];
-        date2 = formatDate(new Date(payment.date));
+        date2 = formatDate(payment.date);
         jama = `Rs. ${payment.amount.toFixed(2)}`;
       }
 
       tableData.push([
         index + 1,
-        formatDate(new Date(bill.date)),
+        formatDate(bill.date),
         itemsSummary.length > 30 ? itemsSummary.substring(0, 30) + '...' : itemsSummary,
         `Rs. ${bill.grandTotal.toFixed(2)}`,
         date2,
@@ -186,7 +196,7 @@ export const generateCustomerSummaryPDF = async (customerId: string, forceShare:
     doc.setTextColor(0, 0, 0);
     addPdfFooterLines(doc);
 
-    const fileName = `${balance.customerName}_Summary_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `${balance.customerName}_Summary_${formatDateForFilename(new Date())}.pdf`;
 
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
@@ -292,7 +302,7 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 44);
+    doc.text(`Date: ${formatDate(bill.date)}`, 20, 44);
 
     if (bill.particulars) {
       doc.setFontSize(10);
@@ -353,15 +363,14 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
 
     addPdfFooterLines(doc);
 
-    const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
+    const fileName = `${sanitizeFilePart(bill.customerName)} ${billDateForName(bill.date)}.pdf`;
 
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
       const base64Data = arrayBufferToBase64(pdfOutput);
 
       // Write file to Cache directory
-      const timestamp = new Date().getTime();
-      const uniqueFileName = `bill_${timestamp}_${fileName}`;
+      const uniqueFileName = fileName;
 
       await Filesystem.writeFile({
         path: uniqueFileName,
@@ -387,7 +396,7 @@ export const generateBillPDFForceShare = async (bill: Bill) => {
       const { Share } = await import('@capacitor/share');
       await Share.share({
         title: 'Bill PDF',
-        text: `Bill for ${bill.customerName} - ${formatDate(new Date(bill.date))}`,
+        text: `Bill for ${bill.customerName} - ${formatDate(bill.date)}`,
         url: fileUri.uri,
         dialogTitle: 'Share Bill PDF'
       });
@@ -448,7 +457,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${formatDate(new Date(bill.date))}`, 20, 44);
+    doc.text(`Date: ${formatDate(bill.date)}`, 20, 44);
 
     if (bill.particulars) {
       doc.setFontSize(10);
@@ -509,7 +518,7 @@ export const generateBillPDF = async (bill: Bill, forceShare: boolean = true) =>
 
     addPdfFooterLines(doc);
 
-    const fileName = `${bill.customerName}_${new Date(bill.date).toISOString().split('T')[0]}_${bill.id}.pdf`;
+    const fileName = `${sanitizeFilePart(bill.customerName)} ${billDateForName(bill.date)}.pdf`;
 
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
@@ -584,7 +593,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
     doc.text(`Total Pending: Rs. ${totalPending.toFixed(2)}`, 20, finalY);
     addPdfFooterLines(doc);
 
-    const fileName = `Pending_Amounts_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `TotalBusiness Pending ${todayForName()}.pdf`;
 
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
@@ -592,8 +601,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
 
       if (forceShare) {
         // Write file to Cache directory
-        const timestamp = new Date().getTime();
-        const uniqueFileName = `pending_${timestamp}_${fileName}`;
+        const uniqueFileName = fileName;
 
         await Filesystem.writeFile({
           path: uniqueFileName,
@@ -642,8 +650,7 @@ export const generatePendingPDF = async (pendingCustomers: CustomerBalance[], to
       } catch (saveError) {
         logError(saveError, { function: 'generatePendingPDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
-        const timestamp = new Date().getTime();
-        const uniqueFileName = `pending_fallback_${timestamp}_${fileName}`;
+        const uniqueFileName = fileName;
 
         await Filesystem.writeFile({
           path: uniqueFileName,
@@ -710,7 +717,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
     doc.text(`Total Advance: Rs. ${totalAdvance.toFixed(2)}`, 20, finalY);
     addPdfFooterLines(doc);
 
-    const fileName = `Advance_Amounts_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `TotalBusiness Advance ${todayForName()}.pdf`;
 
     if (Capacitor.isNativePlatform()) {
       const pdfOutput = doc.output('arraybuffer');
@@ -718,8 +725,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
 
       if (forceShare) {
         // Write file to Cache directory
-        const timestamp = new Date().getTime();
-        const uniqueFileName = `advance_${timestamp}_${fileName}`;
+        const uniqueFileName = fileName;
 
         await Filesystem.writeFile({
           path: uniqueFileName,
@@ -768,8 +774,7 @@ export const generateAdvancePDF = async (advanceCustomers: CustomerBalance[], to
       } catch (saveError) {
         logError(saveError, { function: 'generateAdvancePDF', fileName }, 'error');
         // Fallback to force sharing if saving to filesystem fails
-        const timestamp = new Date().getTime();
-        const uniqueFileName = `advance_fallback_${timestamp}_${fileName}`;
+        const uniqueFileName = fileName;
 
         await Filesystem.writeFile({
           path: uniqueFileName,

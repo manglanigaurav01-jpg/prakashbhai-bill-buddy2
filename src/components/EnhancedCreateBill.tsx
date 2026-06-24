@@ -15,6 +15,7 @@ import { Customer, BillItem } from '@/types';
 import { CustomerSelector, BillForm } from './EnhancedCreateBill/index';
 import { validateBillDateWithFutureWarning, validateLargeAmount } from '@/lib/validation';
 import { hapticWarning, hapticSuccess } from '@/lib/haptics';
+import { toStoredDateISO } from '@/lib/stored-date';
 
 interface CreateBillProps {
   onNavigate: (view: string) => void;
@@ -162,7 +163,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
       const billData = {
         customerId: selectedCustomer!.id,
         customerName: selectedCustomer!.name,
-        date: billDate.toISOString().split('T')[0],
+        date: toStoredDateISO(billDate),
         particulars,
         items: billItems,
         ...(discountValue > 0 && { discount: discountValue, discountType }),
@@ -229,7 +230,7 @@ export const EnhancedCreateBill: React.FC<CreateBillProps> = ({ onNavigate }) =>
       const billData = {
         customerId: selectedCustomer!.id,
         customerName: selectedCustomer!.name,
-        date: billDate.toISOString().split('T')[0],
+        date: toStoredDateISO(billDate),
         particulars,
         items: billItems,
         ...(discountValue > 0 && { discount: discountValue, discountType }),

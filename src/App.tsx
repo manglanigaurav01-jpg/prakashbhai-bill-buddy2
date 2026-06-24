@@ -28,6 +28,7 @@ const EnhancedAnalytics = lazy(() => import("@/components/EnhancedAnalytics").th
 const BalanceHistory = lazy(() => import("@/components/BalanceHistory").then(m => ({ default: m.BalanceHistory })));
 const RecycleBin = lazy(() => import("@/components/RecycleBin").then(m => ({ default: m.RecycleBin })));
 const StatisticsDashboard = lazy(() => import("@/components/StatisticsDashboard").then(m => ({ default: m.StatisticsDashboard })));
+const ResetCustomerHistory = lazy(() => import("@/components/ResetCustomerHistory").then(m => ({ default: m.ResetCustomerHistory })));
 
 // Loading component
 const LoadingFallback = () => (
@@ -38,7 +39,7 @@ const LoadingFallback = () => (
 
 const queryClient = new QueryClient();
 
-type View = 'dashboard' | 'createBill' | 'customers' | 'balance' | 'amountTracker' | 'lastBalance' | 'balanceHistory' | 'totalBusiness' | 'itemMaster' | 'editBills' | 'editPayments' | 'settings' | 'analytics' | 'recycleBin' | 'statistics';
+type View = 'dashboard' | 'createBill' | 'customers' | 'balance' | 'amountTracker' | 'lastBalance' | 'balanceHistory' | 'totalBusiness' | 'itemMaster' | 'editBills' | 'editPayments' | 'settings' | 'analytics' | 'recycleBin' | 'statistics' | 'resetCustomerHistory';
 
 const App = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -119,6 +120,8 @@ const App = () => {
         return <Suspense fallback={<LoadingFallback />}><RecycleBin {...viewProps} /></Suspense>;
       case 'statistics':
         return <Suspense fallback={<LoadingFallback />}><StatisticsDashboard {...viewProps} /></Suspense>;
+      case 'resetCustomerHistory':
+        return <Suspense fallback={<LoadingFallback />}><ResetCustomerHistory {...viewProps} /></Suspense>;
       default:
         return <Suspense fallback={<LoadingFallback />}><Dashboard {...viewProps} /></Suspense>;
     }

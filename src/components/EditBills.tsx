@@ -16,6 +16,7 @@ import { SwipeableItem } from '@/components/SwipeableItem';
 import { hapticMedium, hapticSuccess, hapticError } from '@/lib/haptics';
 import { generateBillPDF } from '@/lib/pdf';
 import { Capacitor } from '@capacitor/core';
+import { parseStoredDateToLocal, toStoredDateISO } from '@/lib/stored-date';
 
 interface EditBillsProps {
   onNavigate: (view: string) => void;
@@ -39,7 +40,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   const [error, setError] = useState<string | null>(null);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const [containerHeight] = useState<number>(600);
-  const [startIndex, setStartIndex] = useState<number>(0);
 
   const loadData = async () => {
     try {
@@ -80,14 +80,14 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     const filtered = bills.filter(b => {
       const matchesText = !q || b.customerName.toLowerCase().includes(q) || b.items.some(i => i.itemName.toLowerCase().includes(q));
       if (!matchesText) return false;
-      const billDate = new Date(b.date);
+      const billDate = parseStoredDateToLocal(b.date);
       if (dateFrom && billDate < dateFrom) return false;
       return true;
     });
     const sorted = [...filtered].sort((a, b) => {
       if (sortKey === 'date') {
-        const da = new Date(a.date).getTime();
-        const db = new Date(b.date).getTime();
+        const da = parseStoredDateToLocal(a.date).getTime();
+        const db = parseStoredDateToLocal(b.date).getTime();
         return sortAsc ? da - db : db - da;
       } else {
         const ca = a.customerName.toLowerCase();
@@ -107,7 +107,6 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
 
   const refreshAfterChange = async () => {
     await loadData();
-    setStartIndex(0);
   };
 
   const formatDate = (date: Date) => {
@@ -120,7 +119,7 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
   const startEdit = (bill: Bill) => {
     setEditing(bill);
     setEditingItems(bill.items.map(i => ({ ...i })));
-    setEditingDate(new Date(bill.date));
+    setEditingDate(parseStoredDateToLocal(bill.date));
     const cust = customers.find(c => c.id === bill.customerId) || null;
     setEditingCustomer(cust);
   };
@@ -161,7 +160,7 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
     const updated = updateBill(editing.id, {
       customerId: editingCustomer.id,
       customerName: editingCustomer.name,
-      date: editingDate.toISOString().split('T')[0],
+      date: toStoredDateISO(editingDate),
       items: editingItems,
       grandTotal: editingItems.reduce((s, it) => s + it.total, 0),
     });
@@ -329,41 +328,20 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
               ref={listContainerRef}
               className="overflow-auto"
               style={{ maxHeight: `${containerHeight}px` }}
-              onScroll={(e) => {
-                const el = e.currentTarget as HTMLDivElement;
-                const scrollTop = el.scrollTop;
-                const ITEM_HEIGHT = 96;
-                const newStart = Math.floor(scrollTop / ITEM_HEIGHT);
-                if (newStart !== startIndex) setStartIndex(newStart);
-              }}
             >
-              {(() => {
-                const ITEM_HEIGHT = 96;
-                const overscan = 6;
-                const totalItems = filteredSortedBills.length;
-                const containerH = listContainerRef.current ? listContainerRef.current.getBoundingClientRect().height : containerHeight;
-                const visibleCountCalc = Math.ceil(containerH / ITEM_HEIGHT) + overscan * 2;
-                const renderStart = Math.max(0, startIndex - overscan);
-                const renderEnd = Math.min(totalItems, renderStart + visibleCountCalc);
-                const topSpacer = renderStart * ITEM_HEIGHT;
-                const bottomSpacer = Math.max(0, (totalItems - renderEnd) * ITEM_HEIGHT);
-                const slice = filteredSortedBills.slice(renderStart, renderEnd);
-                return (
-                  <div>
-                    <div style={{ height: topSpacer }} />
-                    <div className="space-y-3">
-                      {slice.map((bill) => (
+              <div className="space-y-3">
+                {filteredSortedBills.map((bill) => (
                         <SwipeableItem
                           key={bill.id}
                           onEdit={() => startEdit(bill)}
                           onDelete={() => handleDelete(bill.id)}
                         >
-                          <Card className="hover:shadow-md transition-all duration-200" style={{ height: ITEM_HEIGHT }}>
+                          <Card className="hover:shadow-md transition-all duration-200">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
-                                    <div className="text-sm text-muted-foreground">{formatDate(new Date(bill.date))}</div>
+                                    <div className="text-sm text-muted-foreground">{formatDate(parseStoredDateToLocal(bill.date))}</div>
                                   </div>
                                   <div className="text-lg font-semibold">{bill.customerName}</div>
                                   <div className="text-sm text-muted-foreground">Items: {bill.items.length} • Total: ₹{bill.grandTotal.toFixed(2)}</div>
@@ -413,11 +391,7 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                           </Card>
                         </SwipeableItem>
                       ))}
-                    </div>
-                    <div style={{ height: bottomSpacer }} />
-                  </div>
-                );
-              })()}
+              </div>
             </div>
           )}
         </div>
@@ -455,38 +429,93 @@ export const EditBills: React.FC<EditBillsProps> = ({ onNavigate }) => {
                     <Label className="text-base">Items</Label>
                     <Button size="sm" variant="outline" onClick={addItemRow}><Plus className="w-4 h-4 mr-1" />Add</Button>
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead className="w-24">Qty</TableHead>
-                        <TableHead className="w-28">Rate</TableHead>
-                        <TableHead className="w-28">Total</TableHead>
-                        <TableHead className="w-20">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {editingItems.map((it) => (
-                        <TableRow key={it.id}>
-                          <TableCell>
-                            <Input value={it.itemName} onChange={(e) => updateItemField(it.id, 'itemName', e.target.value)} placeholder="Item name" />
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" value={it.quantity} onChange={(e) => updateItemField(it.id, 'quantity', e.target.value)} />
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" step="0.01" value={it.rate} onChange={(e) => updateItemField(it.id, 'rate', e.target.value)} />
-                          </TableCell>
-                          <TableCell className="font-medium">₹{it.total.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <Button size="sm" variant="ghost" onClick={() => removeItemRow(it.id)}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
+                  {/* Mobile + tablet: card/grid editor (no horizontal scrolling) */}
+                  <div className="space-y-3 lg:hidden">
+                    {editingItems.map((it, idx) => (
+                      <Card key={it.id} className="p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-medium text-muted-foreground">Item {idx + 1}</div>
+                          <Button size="sm" variant="ghost" onClick={() => removeItemRow(it.id)} aria-label={`Remove item ${idx + 1}`}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-2 space-y-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Item name</Label>
+                            <Input
+                              value={it.itemName}
+                              onChange={(e) => updateItemField(it.id, 'itemName', e.target.value)}
+                              placeholder="Item name"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Qty</Label>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                value={it.quantity}
+                                onChange={(e) => updateItemField(it.id, 'quantity', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Rate</Label>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
+                                value={it.rate}
+                                onChange={(e) => updateItemField(it.id, 'rate', e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
+                            <span className="text-sm text-muted-foreground">Total</span>
+                            <span className="text-sm font-semibold">₹{it.total.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Desktop: table editor */}
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[240px]">Item</TableHead>
+                          <TableHead className="w-32">Qty</TableHead>
+                          <TableHead className="w-40">Rate</TableHead>
+                          <TableHead className="w-40">Total</TableHead>
+                          <TableHead className="w-24">Action</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {editingItems.map((it, idx) => (
+                          <TableRow key={it.id}>
+                            <TableCell>
+                              <Input value={it.itemName} onChange={(e) => updateItemField(it.id, 'itemName', e.target.value)} placeholder="Item name" />
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" inputMode="decimal" value={it.quantity} onChange={(e) => updateItemField(it.id, 'quantity', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" inputMode="decimal" step="0.01" value={it.rate} onChange={(e) => updateItemField(it.id, 'rate', e.target.value)} />
+                            </TableCell>
+                            <TableCell className="font-medium">₹{it.total.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="ghost" onClick={() => removeItemRow(it.id)} aria-label={`Remove item ${idx + 1}`}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2">

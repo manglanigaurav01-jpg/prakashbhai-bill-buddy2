@@ -3,12 +3,18 @@ import { ArrowLeft, Download, TrendingUp, Users, Package, IndianRupee } from 'lu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getBills, getPayments, updateBusinessAnalytics } from '@/lib/storage';
+import { getBills, getPayments, getCustomers, updateBusinessAnalytics } from '@/lib/storage';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { formatDateForFilename, formatDisplayDate } from '@/lib/formatters';
+import { parseStoredDateToLocal } from '@/lib/stored-date';
+import type { Bill, Payment } from '@/types';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Label } from '@/components/ui/label';
+import { generateCustomerLedgerPDF } from '@/lib/last-balance-pdf';
 
 interface AnalyticsData {
   revenues: { date: string; amount: number }[];
@@ -22,11 +28,174 @@ interface EnhancedAnalyticsProps {
   onNavigate: (view: string) => void;
 }
 
+const getDateRangeFromTimeRange = (timeRange: '7d' | '30d' | '90d' | '1y') => {
+  const endDate = new Date();
+  const startDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+  startDate.setHours(0, 0, 0, 0);
+  switch (timeRange) {
+    case '7d': startDate.setDate(endDate.getDate() - 7); break;
+    case '30d': startDate.setDate(endDate.getDate() - 30); break;
+    case '90d': startDate.setDate(endDate.getDate() - 90); break;
+    case '1y': startDate.setFullYear(endDate.getFullYear() - 1); break;
+  }
+  return { startDate, endDate };
+};
+
+const toNum = (value: number) => Number.isFinite(value) ? value : 0;
+
+const sanitizeSheetName = (name: string, used: Set<string>): string => {
+  const cleaned = (name || 'Customer')
+    .replace(/[\\/*?:]/g, '')
+    .replace(/[[\]]/g, '')
+    .trim()
+    .slice(0, 31) || 'Customer';
+  if (!used.has(cleaned)) {
+    used.add(cleaned);
+    return cleaned;
+  }
+  let i = 2;
+  while (i < 1000) {
+    const suffix = ` (${i})`;
+    const candidate = `${cleaned.slice(0, Math.max(0, 31 - suffix.length))}${suffix}`;
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+    i += 1;
+  }
+  return cleaned;
+};
+
+const buildCustomerLedgerRows = (
+  customerBills: Bill[],
+  customerPayments: Payment[],
+  startDate: Date,
+  endDate: Date
+) => {
+  const openingBillsTotal = customerBills
+    .filter((bill) => parseStoredDateToLocal(bill.date) < startDate)
+    .reduce((sum, bill) => sum + toNum(bill.grandTotal), 0);
+  const openingPaymentsTotal = customerPayments
+    .filter((payment) => parseStoredDateToLocal(payment.date) < startDate)
+    .reduce((sum, payment) => sum + toNum(payment.amount), 0);
+  const openingBalance = openingBillsTotal - openingPaymentsTotal;
+
+  const filteredBills = customerBills
+    .filter((bill) => {
+      const date = parseStoredDateToLocal(bill.date);
+      return date >= startDate && date <= endDate;
+    })
+    .sort((a, b) => parseStoredDateToLocal(a.date).getTime() - parseStoredDateToLocal(b.date).getTime());
+
+  const filteredPayments = customerPayments
+    .filter((payment) => {
+      const date = parseStoredDateToLocal(payment.date);
+      return date >= startDate && date <= endDate;
+    })
+    .sort((a, b) => parseStoredDateToLocal(a.date).getTime() - parseStoredDateToLocal(b.date).getTime());
+
+  const salesRows = filteredBills.flatMap((bill, billIndex) =>
+    bill.items.map((item, itemIndex) => ({
+      'Sr Number': itemIndex === 0 ? billIndex + 1 : '',
+      Date: itemIndex === 0 ? formatDisplayDate(bill.date) : '',
+      Item: item.itemName || '',
+      Note: itemIndex === 0 ? (bill.particulars || '') : '',
+      Quantity: toNum(item.quantity),
+      Rate: toNum(item.rate),
+      'Total amt': toNum(item.total),
+      'Payment Sr Number': '',
+      'Payment date': '',
+      'Payment Note': '',
+      'Amt paid': '',
+    }))
+  );
+
+  const paymentRows = filteredPayments.map((payment, index) => ({
+    'Sr Number': '',
+    Date: '',
+    Item: '',
+    Note: '',
+    Quantity: '',
+    Rate: '',
+    'Total amt': '',
+    'Payment Sr Number': index + 1,
+    'Payment date': formatDisplayDate(payment.date),
+    'Payment Note': payment.note || '',
+    'Amt paid': toNum(payment.amount),
+  }));
+
+  const maxLen = Math.max(salesRows.length, paymentRows.length);
+  const rows = maxLen > 0 ? Array.from({ length: maxLen }, (_, idx) => {
+    const s = salesRows[idx];
+    const p = paymentRows[idx];
+    return {
+      'Sr Number': s?.['Sr Number'] ?? '',
+      Date: s?.Date ?? '',
+      Item: s?.Item ?? '',
+      Note: s?.Note ?? '',
+      Quantity: s?.Quantity ?? '',
+      Rate: s?.Rate ?? '',
+      'Total amt': s?.['Total amt'] ?? '',
+      'Payment Sr Number': p?.['Payment Sr Number'] ?? '',
+      'Payment date': p?.['Payment date'] ?? '',
+      'Payment Note': p?.['Payment Note'] ?? '',
+      'Amt paid': p?.['Amt paid'] ?? '',
+    };
+  }) : [];
+
+  const periodSales = filteredBills.reduce((sum, bill) => sum + toNum(bill.grandTotal), 0);
+  const periodPaid = filteredPayments.reduce((sum, payment) => sum + toNum(payment.amount), 0);
+  const closingBalance = openingBalance + periodSales - periodPaid;
+
+  return {
+    rows: [
+      {
+        'Sr Number': '',
+        Date: '',
+        Item: 'Opening Balance',
+        Note: '',
+        Quantity: '',
+        Rate: '',
+        'Total amt': openingBalance,
+        'Payment Sr Number': '',
+        'Payment date': '',
+        'Payment Note': '',
+        'Amt paid': '',
+      },
+      ...rows,
+      {
+        'Sr Number': '',
+        Date: '',
+        Item: 'Closing Balance',
+        Note: '',
+        Quantity: '',
+        Rate: '',
+        'Total amt': closingBalance,
+        'Payment Sr Number': '',
+        'Payment date': '',
+        'Payment Note': '',
+        'Amt paid': '',
+      },
+    ],
+    hasPeriodData:
+      filteredBills.length > 0 ||
+      filteredPayments.length > 0 ||
+      openingBalance !== 0 ||
+      closingBalance !== 0,
+  };
+};
+
 export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate }) => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ledgerCustomerId, setLedgerCustomerId] = useState<string>('');
+  const [ledgerFromDate, setLedgerFromDate] = useState<Date | undefined>(undefined);
+  const [ledgerToDate, setLedgerToDate] = useState<Date | undefined>(undefined);
+  const [ledgerBusy, setLedgerBusy] = useState(false);
   const { toast } = useToast();
+  const customers = React.useMemo(() => getCustomers().sort((a, b) => a.name.localeCompare(b.name)), []);
 
   const calculateAnalytics = React.useCallback(async () => {
     setLoading(true);
@@ -44,26 +213,18 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
     const payments = getPayments();
     await updateBusinessAnalytics();
 
-    // Calculate date range
-    const endDate = new Date();
-    const startDate = new Date();
-    switch (timeRange) {
-      case '7d': startDate.setDate(endDate.getDate() - 7); break;
-      case '30d': startDate.setDate(endDate.getDate() - 30); break;
-      case '90d': startDate.setDate(endDate.getDate() - 90); break;
-      case '1y': startDate.setFullYear(endDate.getFullYear() - 1); break;
-    }
+    const { startDate, endDate } = getDateRangeFromTimeRange(timeRange);
 
     // Filter bills first for better performance with large datasets
     const filteredBills = bills.filter(bill => {
-      const billDate = new Date(bill.date);
+      const billDate = parseStoredDateToLocal(bill.date);
       return billDate >= startDate && billDate <= endDate;
     });
 
     // Revenue trends - use filtered bills
     const revenues = filteredBills
       .reduce((acc: { date: string; amount: number }[], bill) => {
-        const dateStr = bill.date.split('T')[0];
+        const dateStr = formatDateForFilename(bill.date);
         const existing = acc.find(x => x.date === dateStr);
         if (existing) {
           existing.amount += bill.grandTotal;
@@ -111,7 +272,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
     
     // Filter payments by date range for better performance
     const filteredPayments = payments.filter(payment => {
-      const paymentDate = new Date(payment.date);
+      const paymentDate = parseStoredDateToLocal(payment.date);
       return paymentDate >= startDate && paymentDate <= endDate;
     });
 
@@ -119,7 +280,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
       const stats = customerStats.get(payment.customerName);
       if (stats) {
         stats.payments.push(payment.amount);
-        const paymentDate = new Date(payment.date);
+        const paymentDate = parseStoredDateToLocal(payment.date);
         if (!stats.lastPaymentDate || paymentDate > stats.lastPaymentDate) {
           stats.lastPaymentDate = paymentDate;
         }
@@ -176,7 +337,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
       
       // Revenue sheet
       const revenueData = analyticsData.revenues.map(r => ({
-        Date: new Date(r.date).toLocaleDateString(),
+        Date: formatDisplayDate(r.date),
         Revenue: r.amount
       }));
       if (revenueData.length > 0) {
@@ -201,8 +362,38 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
         const outstandingSheet = XLSX.utils.json_to_sheet(analyticsData.outstandingPayments);
         XLSX.utils.book_append_sheet(workbook, outstandingSheet, "Outstanding Payments");
       }
+
+      // Customer-wise ledger sheets (same structure as Last Balance PDF table)
+      const bills = getBills();
+      const payments = getPayments();
+      const { startDate, endDate } = getDateRangeFromTimeRange(timeRange);
+      const customerNames = Array.from(
+        new Set([
+          ...bills.map((b) => b.customerName),
+          ...payments.map((p) => p.customerName),
+        ].filter(Boolean))
+      ).sort((a, b) => a.localeCompare(b));
+
+      const usedSheetNames = new Set<string>([
+        'Revenue Trends',
+        'Top Items',
+        'Customer Patterns',
+        'Outstanding Payments',
+      ]);
+
+      customerNames.forEach((customerName) => {
+        const customerBills = bills.filter((b) => b.customerName === customerName);
+        const customerPayments = payments.filter((p) => p.customerName === customerName);
+        const ledger = buildCustomerLedgerRows(customerBills, customerPayments, startDate, endDate);
+        if (!ledger.hasPeriodData) {
+          return;
+        }
+        const sheet = XLSX.utils.json_to_sheet(ledger.rows);
+        const safeName = sanitizeSheetName(customerName, usedSheetNames);
+        XLSX.utils.book_append_sheet(workbook, sheet, safeName);
+      });
       
-      const fileName = `bill-buddy-analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `bill-buddy-analytics-${timeRange}-${formatDateForFilename(new Date())}.xlsx`;
       const isWeb = Capacitor.getPlatform() === 'web';
       
       if (isWeb) {
@@ -272,6 +463,57 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
         description: error.message || "Failed to export to Excel",
         variant: "destructive",
       });
+    }
+  };
+
+  const exportCustomerLedgerPdf = async (mode: 'share' | 'save') => {
+    if (!ledgerCustomerId) {
+      toast({
+        title: "Select customer",
+        description: "Please select a customer first",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (ledgerFromDate && ledgerToDate && ledgerFromDate.getTime() > ledgerToDate.getTime()) {
+      toast({
+        title: "Invalid date range",
+        description: "From date cannot be after To date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const customer = customers.find((c) => c.id === ledgerCustomerId);
+    if (!customer) {
+      toast({
+        title: "Customer not found",
+        description: "Please reselect customer and try again",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLedgerBusy(true);
+      const result = await generateCustomerLedgerPDF(customer.id, customer.name, {
+        fromDate: ledgerFromDate,
+        toDate: ledgerToDate,
+        mode,
+      });
+      toast({
+        title: mode === 'share' ? 'PDF ready to share' : 'PDF saved',
+        description: result.message,
+      });
+    } catch (error: any) {
+      console.error('Customer ledger PDF export failed:', error);
+      toast({
+        title: "Export failed",
+        description: error?.message || "Could not generate customer ledger PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setLedgerBusy(false);
     }
   };
 
@@ -377,7 +619,7 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
                 <div className="space-y-2">
                   {analyticsData.revenues.map((data, index) => (
                     <div key={index} className="flex justify-between items-center hover:bg-muted p-2 rounded-lg">
-                      <span>{new Date(data.date).toLocaleDateString()}</span>
+                      <span>{formatDisplayDate(data.date)}</span>
                       <span className="font-medium">₹{data.amount.toLocaleString()}</span>
                     </div>
                   ))}
@@ -460,6 +702,58 @@ export const EnhancedAnalytics: React.FC<EnhancedAnalyticsProps> = ({ onNavigate
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Ledger PDF</CardTitle>
+              <CardDescription>
+                Select customer and optional date range to export PDF in table format.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Customer Name</Label>
+                  <Select value={ledgerCustomerId} onValueChange={setLedgerCustomerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>From Date (Optional)</Label>
+                  <DatePicker
+                    date={ledgerFromDate}
+                    onDateChange={(d) => setLedgerFromDate(d || undefined)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>To Date (Optional)</Label>
+                  <DatePicker
+                    date={ledgerToDate}
+                    onDateChange={(d) => setLedgerToDate(d || undefined)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={() => exportCustomerLedgerPdf('share')} disabled={ledgerBusy || !ledgerCustomerId}>
+                  Share
+                </Button>
+                <Button variant="outline" onClick={() => exportCustomerLedgerPdf('save')} disabled={ledgerBusy || !ledgerCustomerId}>
+                  Save
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <div>No data available</div>

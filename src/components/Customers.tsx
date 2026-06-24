@@ -10,6 +10,7 @@ import { Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from '@/lib/haptics';
 import { SwipeableItem } from "@/components/SwipeableItem";
+import { formatDisplayDate } from '@/lib/formatters';
 
 interface CustomersProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'dashboard') => void;
@@ -203,7 +204,7 @@ export const Customers = ({ onNavigate }: CustomersProps) => {
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium break-words">{customer.name}</p>
-                              <p className="text-sm text-muted-foreground">Added on {new Date(customer.createdAt).toLocaleDateString()}</p>
+                              <p className="text-sm text-muted-foreground">Added on {formatDisplayDate(customer.createdAt)}</p>
                             </div>
                           </div>
                         </div>

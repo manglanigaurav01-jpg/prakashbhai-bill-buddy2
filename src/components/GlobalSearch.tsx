@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getBills, getPayments, getCustomers, getItems } from '@/lib/storage';
 import { globalSearch } from '@/lib/search';
 import { Bill, Payment, Customer, ItemMaster } from '@/types';
+import { formatDisplayDate } from '@/lib/formatters';
 
 interface GlobalSearchProps {
   open: boolean;
@@ -121,7 +122,7 @@ export const GlobalSearch = ({ open, onOpenChange, onNavigate }: GlobalSearchPro
                   >
                     <div className="font-medium">{bill.customerName}</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(bill.date).toLocaleDateString()} • ₹{bill.grandTotal.toFixed(2)}
+                      {formatDisplayDate(bill.date)} • ₹{bill.grandTotal.toFixed(2)}
                     </div>
                     {bill.particulars && (
                       <div className="text-xs text-muted-foreground mt-1">{bill.particulars}</div>
@@ -150,7 +151,7 @@ export const GlobalSearch = ({ open, onOpenChange, onNavigate }: GlobalSearchPro
                   >
                     <div className="font-medium">{payment.customerName}</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(payment.date).toLocaleDateString()} • ₹{payment.amount.toFixed(2)}
+                      {formatDisplayDate(payment.date)} • ₹{payment.amount.toFixed(2)}
                       {payment.paymentMethod && ` • ${payment.paymentMethod}`}
                     </div>
                   </div>

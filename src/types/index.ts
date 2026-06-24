@@ -34,6 +34,7 @@ export interface Payment {
   amount: number;
   date: string;
   paymentMethod?: 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Other';
+  note?: string;
   createdAt: string;
 }
 

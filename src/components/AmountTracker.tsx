@@ -15,6 +15,8 @@ import { getCustomers, getPaymentHistory, deletePayment, saveCustomer } from "@/
 import { Customer, Payment } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { SwipeableItem } from '@/components/SwipeableItem';
+import { parseStoredDateToLocal, toStoredDateISO } from '@/lib/stored-date';
+import { formatDisplayDate } from '@/lib/formatters';
 
 interface AmountTrackerProps {
   onNavigate: (view: 'create-bill' | 'customers' | 'balance' | 'amount-tracker' | 'dashboard' | 'total-business' | 'last-balance') => void;
@@ -26,6 +28,7 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
   const [amount, setAmount] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Other'>('Cash');
+  const [paymentNote, setPaymentNote] = useState<string>('');
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
@@ -68,8 +71,9 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.name,
       amount: amountNum,
-      date: paymentDate.toISOString().split('T')[0],
+      date: toStoredDateISO(paymentDate),
       paymentMethod,
+      ...(paymentNote.trim() ? { note: paymentNote.trim() } : {}),
     });
 
     loadPaymentHistory();
@@ -80,6 +84,7 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
     });
 
     setAmount("");
+    setPaymentNote("");
   };
 
   const handleDelete = (paymentId: string) => {
@@ -275,6 +280,16 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label>Additional Information (Optional)</Label>
+                <Input
+                  type="text"
+                  placeholder="Write additional information"
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                />
+              </div>
+
               <Button onClick={handleRecordPayment} className="w-full">
                 <Save className="w-4 h-4 mr-2" />
                 Record Payment
@@ -300,15 +315,12 @@ export const AmountTracker = ({ onNavigate }: AmountTrackerProps) => {
                         <div>
                           <div className="font-medium">{payment.customerName}</div>
                           <div className="text-sm text-muted-foreground">
-                            {(() => {
-                              const date = new Date(payment.date);
-                              const day = date.getDate().toString().padStart(2, '0');
-                              const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                              const year = date.getFullYear();
-                              return `${day}/${month}/${year}`;
-                            })()}
+                            {formatDisplayDate(parseStoredDateToLocal(payment.date))}
                             {payment.paymentMethod && ` • ${payment.paymentMethod}`}
                           </div>
+                          {payment.note && (
+                            <div className="text-xs text-muted-foreground">{payment.note}</div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-accent">₹{payment.amount.toFixed(2)}</span>

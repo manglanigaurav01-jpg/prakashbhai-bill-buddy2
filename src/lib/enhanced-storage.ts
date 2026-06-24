@@ -3,6 +3,11 @@ import { validateBillDate, validateDate } from './validation';
 import { buildIndexes, invalidateIndexes, needsReindexing } from './indexing';
 import { createLocalBackup } from './data-backup';
 
+// NOTE:
+// `storage.ts` is the primary write path used by billing/payment screens.
+// Keep this module for compatibility utilities only, and avoid mixing write paths
+// in UI flows to prevent inconsistent behavior.
+
 const STORAGE_KEYS = {
   CUSTOMERS: 'prakash_customers',
   BILLS: 'prakash_bills',

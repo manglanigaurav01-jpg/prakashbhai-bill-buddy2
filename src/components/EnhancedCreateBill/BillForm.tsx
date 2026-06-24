@@ -29,6 +29,96 @@ interface BillFormProps {
   onDiscountTypeChange: (type: 'percentage' | 'flat') => void;
 }
 
+interface BillItemRowProps {
+  item: BillItem;
+  index: number;
+  isLoading: boolean;
+  canRemove: boolean;
+  onItemSelect: (index: number, item: any) => void;
+  onQuantityChange: (index: number, value: string) => void;
+  onRateChange: (index: number, value: string) => void;
+  onRemoveItem: (index: number) => void;
+}
+
+const BillItemRow = React.memo(({
+  item,
+  index,
+  isLoading,
+  canRemove,
+  onItemSelect,
+  onQuantityChange,
+  onRateChange,
+  onRemoveItem,
+}: BillItemRowProps) => {
+  return (
+    <Card className="p-4">
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <Label className="text-sm">Item Name</Label>
+          <ItemSelector
+            index={index}
+            item={item}
+            onItemSelect={(selectedItem) => onItemSelect(index, selectedItem)}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-3 items-end">
+          <div className="space-y-1 md:col-span-3">
+            <Label className="text-sm">Quantity</Label>
+            <Input
+              type="number"
+              value={item.quantity || ''}
+              onChange={(e) => onQuantityChange(index, e.target.value)}
+              placeholder="Qty"
+              required
+              min="0"
+              step="0.01"
+              aria-label={`Quantity for item ${index + 1}`}
+            />
+          </div>
+
+          <div className="space-y-1 md:col-span-3">
+            <Label className="text-sm">Rate</Label>
+            <Input
+              type="number"
+              value={item.rate || ''}
+              onChange={(e) => onRateChange(index, e.target.value)}
+              placeholder="Rate"
+              required
+              min="0"
+              step="0.01"
+              aria-label={`Rate for item ${index + 1}`}
+            />
+          </div>
+
+          <div className="space-y-1 md:col-span-4">
+            <Label className="text-sm">Total</Label>
+            <div
+              className="p-2 bg-muted rounded-md text-sm font-medium min-h-10 flex items-center"
+              aria-label={`Total for item ${index + 1}`}
+              aria-live="polite"
+            >
+              ₹{item.total.toFixed(2)}
+            </div>
+          </div>
+
+          <div className="col-span-2 md:col-span-2 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRemoveItem(index)}
+              disabled={!canRemove || isLoading}
+              aria-label={`Remove item ${index + 1}`}
+            >
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+});
+
 export const BillForm: React.FC<BillFormProps> = ({
   billDate,
   particulars,
@@ -73,16 +163,16 @@ export const BillForm: React.FC<BillFormProps> = ({
         />
       </div>
 
-      {/* Particulars */}
+      {/* Note */}
       <div className="space-y-2">
-        <Label htmlFor="particulars">Particulars (Optional)</Label>
+        <Label htmlFor="particulars">Note (Optional)</Label>
         <Textarea
           id="particulars"
           value={particulars}
           onChange={(e) => onParticularsChange(e.target.value)}
-          placeholder="Enter bill particulars..."
+          placeholder="Write a note for this bill..."
           rows={2}
-          aria-label="Bill particulars"
+          aria-label="Bill note"
         />
       </div>
 
@@ -104,74 +194,17 @@ export const BillForm: React.FC<BillFormProps> = ({
 
         <div className="space-y-3">
           {billItems.map((item, index) => (
-            <Card key={item.id} className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                {/* Item Name with Search */}
-                <div className="md:col-span-4 space-y-1">
-                  <Label className="text-sm">Item Name</Label>
-                  <ItemSelector
-                    index={index}
-                    item={item}
-                    onItemSelect={(selectedItem) => onItemSelect(index, selectedItem)}
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div className="md:col-span-2 space-y-1">
-                  <Label className="text-sm">Quantity</Label>
-                  <Input
-                    type="number"
-                    value={item.quantity || ''}
-                    onChange={(e) => onQuantityChange(index, e.target.value)}
-                    placeholder="Qty"
-                    required
-                    min="0"
-                    step="0.01"
-                    aria-label={`Quantity for item ${index + 1}`}
-                  />
-                </div>
-
-                {/* Rate */}
-                <div className="md:col-span-2 space-y-1">
-                  <Label className="text-sm">Rate</Label>
-                  <Input
-                    type="number"
-                    value={item.rate || ''}
-                    onChange={(e) => onRateChange(index, e.target.value)}
-                    placeholder="Rate"
-                    required
-                    min="0"
-                    step="0.01"
-                    aria-label={`Rate for item ${index + 1}`}
-                  />
-                </div>
-
-                {/* Total */}
-                <div className="md:col-span-2 space-y-1">
-                  <Label className="text-sm">Total</Label>
-                  <div
-                    className="p-2 bg-muted rounded-md text-sm font-medium"
-                    aria-label={`Total for item ${index + 1}`}
-                    aria-live="polite"
-                  >
-                    ₹{item.total.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* Remove Button */}
-                <div className="md:col-span-2 flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRemoveItem(index)}
-                    disabled={billItems.length === 1 || isLoading}
-                    aria-label={`Remove item ${index + 1}`}
-                  >
-                    <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
+            <BillItemRow
+              key={item.id}
+              item={item}
+              index={index}
+              isLoading={isLoading}
+              canRemove={billItems.length > 1}
+              onItemSelect={onItemSelect}
+              onQuantityChange={onQuantityChange}
+              onRateChange={onRateChange}
+              onRemoveItem={onRemoveItem}
+            />
           ))}
         </div>
       </div>

@@ -12,6 +12,8 @@ import { isPasswordSet, setPassword, verifyPassword, changePassword, removePassw
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from '@/lib/theme-manager';
+import { Textarea } from "@/components/ui/textarea";
+import { getPdfLineSettings, previewPdfLineSettings, savePdfLineSettings } from '@/lib/pdf-line-settings';
 
 import { Separator } from "@/components/ui/separator";
 interface SettingsProps {
@@ -29,6 +31,14 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
+  const [pdfHeaderLine, setPdfHeaderLine] = useState('');
+  const [pdfFooterLine, setPdfFooterLine] = useState('');
+
+  useEffect(() => {
+    const settings = getPdfLineSettings();
+    setPdfHeaderLine(settings.headerLine);
+    setPdfFooterLine(settings.footerLine);
+  }, []);
   const toggleDarkMode = () => {
     toggleTheme();
     toast({
@@ -145,6 +155,20 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
     setNewPassword('');
     setConfirmNewPassword('');
     setPasswordInput('');
+  };
+
+  const savePdfLines = () => {
+    const next = previewPdfLineSettings({
+      headerLine: pdfHeaderLine,
+      footerLine: pdfFooterLine,
+    });
+    savePdfLineSettings(next);
+    setPdfHeaderLine(next.headerLine);
+    setPdfFooterLine(next.footerLine);
+    toast({
+      title: "PDF lines saved",
+      description: "Header and footer lines were updated for all generated PDFs.",
+    });
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4 py-4 md:px-8 md:py-6 lg:px-12 lg:py-8 relative overflow-hidden">
@@ -286,6 +310,55 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
             </Card>
             {/* Enhanced Backup System */}
             <BackupManagerPlain />
+            {/* PDF Line Editor */}
+            <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-accent/20 text-accent">
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Edit PDF Lines</CardTitle>
+                    <CardDescription>
+                      Customize default header/footer text used in all PDFs (max 3 lines each)
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-header-line">Header line</Label>
+                  <Textarea
+                    id="pdf-header-line"
+                    value={pdfHeaderLine}
+                    onChange={(e) => setPdfHeaderLine(e.target.value)}
+                    rows={3}
+                    placeholder="Write header text (up to 3 lines)"
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Keep empty to hide header text in PDF.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-footer-line">Footer line</Label>
+                  <Textarea
+                    id="pdf-footer-line"
+                    value={pdfFooterLine}
+                    onChange={(e) => setPdfFooterLine(e.target.value)}
+                    rows={3}
+                    placeholder="Write footer text (up to 3 lines)"
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Keep empty to hide footer text in PDF.
+                  </p>
+                </div>
+                <Button onClick={savePdfLines} className="w-full">
+                  Save PDF Lines
+                </Button>
+              </CardContent>
+            </Card>
           </div>
           {/* Right Column - Quick Actions */}
           <div className="space-y-6">

@@ -9,6 +9,8 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem'; // Keep Directory imported
 import { Share } from '@capacitor/share';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateForFilename, formatDisplayDate } from '@/lib/formatters';
+import { parseStoredDateToLocal } from '@/lib/stored-date';
 
 interface AnalyticsData {
   revenues: { date: string; amount: number }[];
@@ -36,6 +38,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    startDate.setHours(0, 0, 0, 0);
     switch (timeRange) {
       case '7d': startDate.setDate(endDate.getDate() - 7); break;
       case '30d': startDate.setDate(endDate.getDate() - 30); break;
@@ -45,9 +49,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
 
     // Revenue trends
     const revenues = bills.reduce((acc: { date: string; amount: number }[], bill) => {
-      const billDate = new Date(bill.date);
+      const billDate = parseStoredDateToLocal(bill.date);
       if (billDate >= startDate && billDate <= endDate) {
-        const dateStr = billDate.toISOString().split('T')[0];
+        const dateStr = formatDateForFilename(billDate);
         const existing = acc.find(x => x.date === dateStr);
         if (existing) {
           existing.amount += bill.grandTotal;
@@ -62,7 +66,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
     const itemStats = new Map<string, { quantity: number; revenue: number }>();
     
     bills.forEach(bill => {
-      const billDate = new Date(bill.date);
+      const billDate = parseStoredDateToLocal(bill.date);
       if (billDate >= startDate && billDate <= endDate) {
         bill.items.forEach(item => {
           const existing = itemStats.get(item.itemName) || { quantity: 0, revenue: 0 };
@@ -80,7 +84,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
 
     // Customer payment patterns
     const customerPatterns = bills.reduce((acc: any[], bill) => {
-      if (new Date(bill.date) >= startDate && new Date(bill.date) <= endDate) {
+      if (parseStoredDateToLocal(bill.date) >= startDate && parseStoredDateToLocal(bill.date) <= endDate) {
         const customer = acc.find(c => c.customer === bill.customerName);
         if (customer) {
           customer.totalAmount += bill.grandTotal;
@@ -101,8 +105,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
     customerPatterns.forEach(customer => {
       const customerPayments = payments.filter(p => 
         p.customerName === customer.customer &&
-        new Date(p.date) >= startDate &&
-        new Date(p.date) <= endDate
+        parseStoredDateToLocal(p.date) >= startDate &&
+        parseStoredDateToLocal(p.date) <= endDate
       );
       customer.paymentFrequency = customerPayments.length / customer.billCount;
     });
@@ -123,7 +127,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
     const previousYearSales = new Array(12).fill(0);
     
     bills.forEach(bill => {
-      const date = new Date(bill.date);
+      const date = parseStoredDateToLocal(bill.date);
       const month = date.getMonth();
       const year = date.getFullYear();
       
@@ -151,7 +155,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
   const exportToExcel = async () => {
     if (!analyticsData) return;
 
-    const fileName = `analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `analytics_${timeRange}_${formatDateForFilename(new Date())}.xlsx`;
 
     try {
       const worker = new Worker(new URL('@/workers/export-worker.ts', import.meta.url));
@@ -333,7 +337,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
               <div className="mt-4 space-y-2">
                 {analyticsData.revenues.slice(-5).map((revenue, i) => (
                   <div key={i} className="flex justify-between items-center">
-                    <span className="text-sm">{new Date(revenue.date).toLocaleDateString()}</span>
+                    <span className="text-sm">{formatDisplayDate(revenue.date)}</span>
                     <span className="font-medium">₹{revenue.amount.toLocaleString()}</span>
                   </div>
                 ))}
